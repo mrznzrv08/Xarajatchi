@@ -1,0 +1,2132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#14162A" />
+<meta name="description" content="A local-first expense, budget, and savings tracker with monthly reports." />
+<title>Current — Expense Tracker</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icon-16.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Current">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================= DESIGN TOKENS ============================= */
+:root{
+  --radius-sm:12px; --radius-md:18px; --radius-lg:26px; --radius-xl:34px; --radius-pill:999px;
+  --sp-xs:4px; --sp-sm:8px; --sp-md:16px; --sp-lg:24px; --sp-xl:32px;
+  --font-display:'Manrope', sans-serif;
+  --font-body:'Inter', sans-serif;
+
+  --accent:#8C7CFF; --accent-2:#3DE0DB;
+  --income:#2ED9A3; --expense:#FF7A93; --danger:#FF5470; --warn:#FFC048;
+
+  --bg-1:#0E0F1C; --bg-2:#171A2E; --bg-3:#1E1440;
+  --glass-fill:rgba(255,255,255,0.07); --glass-border:rgba(255,255,255,0.14);
+  --glass-fill-strong:rgba(255,255,255,0.12);
+  --text:#F3F4F9; --text-2:#B7BBD1; --text-3:#767C97;
+  --shadow:rgba(0,0,0,0.45);
+  --tabbar-bg:rgba(16,17,32,0.6);
+}
+[data-theme="light"]{
+  --bg-1:#EAF0FB; --bg-2:#F1ECFB; --bg-3:#F7EEF6;
+  --glass-fill:rgba(255,255,255,0.55); --glass-border:rgba(255,255,255,0.85);
+  --glass-fill-strong:rgba(255,255,255,0.75);
+  --text:#191A2B; --text-2:#4B4F68; --text-3:#8A8FAA;
+  --shadow:rgba(108,92,231,0.18);
+  --tabbar-bg:rgba(255,255,255,0.6);
+  --income:#0FAE86; --expense:#F03A67;
+}
+
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  margin:0; font-family:var(--font-body); color:var(--text);
+  background:var(--bg-1);
+  overflow-x:hidden;
+  transition:background .4s ease, color .4s ease;
+}
+h1,h2,h3,.display{font-family:var(--font-display);}
+button, input, select, textarea{ font-family:inherit; }
+
+/* ============================= LIQUID BACKDROP ============================= */
+.liquid-bg{position:fixed; inset:0; z-index:-1; overflow:hidden; background:
+  radial-gradient(circle at 20% 15%, var(--bg-2), transparent 55%),
+  radial-gradient(circle at 85% 75%, var(--bg-3), transparent 55%),
+  var(--bg-1);
+  transition:background .4s ease;
+}
+.blob{position:absolute; border-radius:50%; filter:blur(60px); opacity:.55; will-change:transform;}
+.blob1{width:340px; height:340px; background:var(--accent); top:-80px; left:-60px; animation:float1 22s ease-in-out infinite;}
+.blob2{width:300px; height:300px; background:var(--accent-2); bottom:-60px; right:-40px; animation:float2 26s ease-in-out infinite;}
+.blob3{width:220px; height:220px; background:var(--income); top:40%; left:60%; opacity:.28; animation:float3 30s ease-in-out infinite;}
+@keyframes float1{0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(40px,60px) scale(1.15);}}
+@keyframes float2{0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(-50px,-30px) scale(1.1);}}
+@keyframes float3{0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(-60px,40px) scale(0.9);}}
+@media (prefers-reduced-motion: reduce){ .blob{animation:none;} }
+
+/* ============================= GLASS ============================= */
+.glass{
+  background:var(--glass-fill);
+  border:1px solid var(--glass-border);
+  border-radius:var(--radius-lg);
+  backdrop-filter:blur(24px) saturate(140%);
+  -webkit-backdrop-filter:blur(24px) saturate(140%);
+  box-shadow:0 8px 30px var(--shadow);
+}
+.glass-strong{ background:var(--glass-fill-strong); }
+
+/* ============================= LAYOUT ============================= */
+#app{max-width:520px; margin:0 auto; min-height:100vh; padding-bottom:110px; position:relative;}
+.screen{display:none; padding:var(--sp-lg); animation:fadeIn .35s ease;}
+.screen.active{display:block;}
+@keyframes fadeIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+
+.page-title{font-size:26px; font-weight:800; margin:8px 0 4px;}
+.page-sub{color:var(--text-3); font-size:13px; font-weight:600; margin-bottom:4px;}
+
+.card{padding:18px; margin-top:16px;}
+.card-label{font-size:12px; font-weight:700; letter-spacing:.5px; color:var(--text-3); text-transform:uppercase; margin-bottom:12px;}
+
+.row{display:flex; align-items:center;}
+.row-between{display:flex; align-items:center; justify-content:space-between;}
+.gap-sm{gap:8px;} .gap-md{gap:12px;}
+
+/* ============================= HEADER ============================= */
+.topbar{display:flex; align-items:center; justify-content:space-between; padding:20px var(--sp-lg) 4px;}
+.brand{display:flex; align-items:center; gap:10px;}
+.brand-mark{width:34px; height:34px; border-radius:11px; background:linear-gradient(135deg,var(--accent),var(--accent-2)); display:flex; align-items:center; justify-content:center; font-size:16px;}
+.brand-name{font-family:var(--font-display); font-weight:800; font-size:18px;}
+
+/* ============================= BUTTONS ============================= */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  padding:14px 22px; border-radius:var(--radius-pill); border:none; cursor:pointer;
+  font-weight:700; font-size:15px; transition:transform .15s ease, opacity .15s ease;
+}
+.btn:active{transform:scale(0.96);}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#6E5AE0); color:#fff; box-shadow:0 6px 18px rgba(140,124,255,0.35);}
+.btn-secondary{background:transparent; border:1.5px solid var(--glass-border); color:var(--text);}
+.btn-danger{background:var(--danger); color:#fff;}
+.btn-block{width:100%;}
+.btn-sm{padding:8px 16px; font-size:13px;}
+.icon-btn{
+  width:44px; height:44px; border-radius:50%; border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; background:var(--glass-fill-strong);
+  color:var(--text); font-size:20px; border:1px solid var(--glass-border);
+}
+.fab{
+  position:fixed; z-index:40; right:calc(50% - 260px + 24px); bottom:110px;
+  width:58px; height:58px; border-radius:50%; border:none; cursor:pointer;
+  background:linear-gradient(135deg,var(--accent),#6E5AE0); color:#fff; font-size:28px;
+  display:flex; align-items:center; justify-content:center; box-shadow:0 10px 24px rgba(140,124,255,0.45);
+}
+@media(max-width:560px){ .fab{ right:24px; } }
+.fab-top{
+  transition:transform .15s ease, opacity .2s ease;
+}
+.fab-top:active{ transform:scale(0.92); }
+.fab-top.hidden{ opacity:0; pointer-events:none; transform:scale(0.8); }
+
+/* ============================= TAB BAR (floating rounded pill, Telegram-style) ============================= */
+.tabbar{
+  position:fixed; left:0; right:0; bottom:0; z-index:30;
+  display:flex; justify-content:center;
+  padding:0 14px calc(14px + env(safe-area-inset-bottom));
+  pointer-events:none;
+}
+.tabbar-inner{
+  width:100%; max-width:492px; display:flex; align-items:center;
+  padding:9px 6px;
+  background:var(--tabbar-bg); backdrop-filter:blur(28px) saturate(150%); -webkit-backdrop-filter:blur(28px) saturate(150%);
+  border:1px solid var(--glass-border);
+  border-radius:30px;
+  box-shadow:0 10px 30px var(--shadow);
+  pointer-events:auto;
+}
+.tab-btn{
+  background:none; border:none; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px;
+  color:var(--text-3); font-size:10.5px; font-weight:700; padding:7px 2px; border-radius:18px;
+  transition:background .25s ease, color .2s ease, transform .15s ease;
+  flex:1 1 0; min-width:0; max-width:110px;
+}
+.tab-btn:active{ transform:scale(0.93); }
+.tab-btn .tab-icon{font-size:19px; line-height:1;}
+.tab-label{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.tab-btn.active{color:var(--accent); background:rgba(140,124,255,0.16);}
+[data-theme="light"] .tab-btn.active{background:rgba(108,92,231,0.14);}
+
+/* ============================= FORM ELEMENTS ============================= */
+.input, .textarea{
+  width:100%; border:1px solid var(--glass-border); border-radius:var(--radius-md);
+  padding:13px 14px; font-size:15px; line-height:1.4; background:var(--glass-fill); color:var(--text); outline:none;
+  transform:translateZ(0); -webkit-transform:translateZ(0);
+}
+.input:focus, .textarea:focus{border-color:var(--accent);}
+.textarea{ min-height:70px; resize:vertical; }
+::placeholder{ color:var(--text-3); }
+
+/* ============================= CHIPS / PICKERS ============================= */
+.chip-row{display:flex; gap:8px; overflow-x:auto; padding:2px 2px 8px; scrollbar-width:none;}
+.chip-row::-webkit-scrollbar{display:none;}
+.chip{
+  display:flex; align-items:center; gap:6px; white-space:nowrap; flex-shrink:0;
+  padding:10px 14px; border-radius:var(--radius-pill); border:1px solid var(--glass-border);
+  background:var(--glass-fill); color:var(--text); font-weight:600; font-size:13px; cursor:pointer;
+}
+.chip.active{ color:#fff; border-color:transparent; }
+.type-toggle{display:flex; gap:8px;}
+.type-toggle .chip{flex:1 1 0; min-width:0; justify-content:center; padding:10px 6px; overflow:hidden;}
+.type-toggle .chip span:last-child{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;}
+
+/* ============================= TRANSACTIONS LIST ============================= */
+.tx-item{ display:flex; align-items:center; padding:11px 0; cursor:pointer; }
+.tx-icon{ width:42px; height:42px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:19px; margin-right:12px; flex-shrink:0; }
+.tx-mid{flex:1; min-width:0;}
+.tx-name{font-weight:700; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.tx-date{font-size:11.5px; color:var(--text-3); margin-top:2px;}
+.tx-note{font-size:12px; color:var(--accent-2); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.tx-amt{font-weight:800; font-size:14.5px; flex-shrink:0; margin-left:8px;}
+.divider{height:1px; background:var(--glass-border); margin:2px 0;}
+
+/* ============================= BALANCE CARD ============================= */
+.balance-value{font-size:36px; font-weight:800; margin-top:2px; font-family:var(--font-display);}
+.split-row{display:flex; gap:26px; margin-top:18px;}
+.split-item{display:flex; align-items:center; gap:9px;}
+.dot{width:10px; height:10px; border-radius:50%; flex-shrink:0;}
+.split-label{font-size:11.5px; color:var(--text-3); font-weight:600;}
+.split-value{font-size:15px; font-weight:800; margin-top:1px;}
+
+/* ============================= PROGRESS BAR ============================= */
+.progress-track{ width:100%; height:9px; border-radius:5px; background:var(--glass-fill-strong); overflow:hidden; }
+.progress-fill{ height:100%; border-radius:5px; transition:width .4s ease; }
+
+/* ============================= MODALS ============================= */
+.modal-backdrop{
+  position:fixed; inset:0; background:rgba(6,7,15,0.4); z-index:130;
+  display:flex; align-items:center; justify-content:center; padding:20px;
+  backdrop-filter:blur(14px) saturate(120%); -webkit-backdrop-filter:blur(14px) saturate(120%);
+  opacity:0; visibility:hidden; pointer-events:none;
+  transition:opacity .28s ease, visibility 0s linear .28s;
+}
+.modal-backdrop.active{
+  opacity:1; visibility:visible; pointer-events:auto;
+  transition:opacity .28s ease, visibility 0s linear;
+}
+.modal-card{
+  transform:scale(0.9) translateY(6px); opacity:0;
+  transition:transform .32s cubic-bezier(.32,.72,0,1), opacity .24s ease;
+}
+.modal-backdrop.active .modal-card{ transform:scale(1) translateY(0); opacity:1; }
+.modal-card{ width:100%; max-width:420px; max-height:85vh; overflow-y:auto; padding:22px; }
+.sheet{
+  position:fixed; left:0; right:0; bottom:0; z-index:110; max-width:520px; margin:0 auto;
+  border-radius:28px 28px 0 0; padding:20px 20px calc(20px + env(safe-area-inset-bottom));
+  transform:translateY(100%); transition:transform .32s cubic-bezier(.32,.72,0,1);
+  max-height:88vh; overflow-y:auto; will-change:transform;
+}
+.sheet.active{transform:translateY(0);}
+.sheet-backdrop{
+  position:fixed; inset:0; background:rgba(6,7,15,0.38); z-index:105;
+  backdrop-filter:blur(14px) saturate(120%); -webkit-backdrop-filter:blur(14px) saturate(120%);
+  opacity:0; visibility:hidden; pointer-events:none;
+  transition:opacity .32s ease, visibility 0s linear .32s;
+}
+.sheet-backdrop.active{
+  opacity:1; visibility:visible; pointer-events:auto;
+  transition:opacity .32s ease, visibility 0s linear;
+}
+.sheet-handle{width:40px; height:4px; border-radius:2px; background:var(--glass-border); margin:0 auto 14px;}
+
+/* ============================= MISC ============================= */
+.empty-state{ text-align:center; color:var(--text-3); padding:28px 10px; font-size:13.5px; }
+.legend-row{display:flex; align-items:center; padding:6px 0;}
+.color-swatch{ width:32px; height:32px; border-radius:50%; border:2px solid transparent; cursor:pointer; }
+.color-swatch.selected{ border-color:var(--text); }
+.color-grid{display:flex; flex-wrap:wrap; gap:10px;}
+.hidden{display:none !important;}
+a{color:var(--accent);}
+.section-header{display:flex; justify-content:space-between; align-items:center; margin:22px 0 8px;}
+.section-title{font-size:18px; font-weight:800;}
+.currency-symbol-lg{font-size:30px; font-weight:800; width:52px; color:var(--accent); font-family:var(--font-display);}
+.link-btn{background:none; border:none; color:var(--accent); font-weight:700; font-size:14px; cursor:pointer;}
+.stat-emoji{font-size:44px; margin-bottom:6px;}
+
+/* ============================= TOGGLE SWITCH ============================= */
+.switch-track{
+  width:46px; height:26px; border-radius:999px; background:var(--glass-fill-strong);
+  border:1px solid var(--glass-border); position:relative; cursor:pointer; flex-shrink:0;
+  transition:background .2s ease, border-color .2s ease;
+}
+.switch-track.on{ background:var(--accent); border-color:transparent; }
+.switch-knob{
+  position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%;
+  background:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.25); transition:transform .2s cubic-bezier(.32,.72,0,1);
+}
+.switch-track.on .switch-knob{ transform:translateX(20px); }
+</style>
+</head>
+<body data-theme="dark">
+<div class="liquid-bg">
+  <div class="blob blob1"></div>
+  <div class="blob blob2"></div>
+  <div class="blob blob3"></div>
+</div>
+
+<div id="app">
+
+  <!-- ============================= ONBOARDING ============================= -->
+  <div class="screen" id="screen-onboarding">
+    <div style="text-align:center; padding-top:50px;">
+      <div class="stat-emoji">💧</div>
+      <h1 style="font-size:28px; font-weight:800; margin:0;" data-i18n="welcome">Welcome to Current</h1>
+      <p style="color:var(--text-2); margin-top:8px; padding:0 20px;" data-i18n="setupSubtitle">Let's set up your tracker — takes about 10 seconds.</p>
+    </div>
+
+    <div class="glass card">
+      <div class="card-label" data-i18n="language">Language</div>
+      <div class="type-toggle" id="ob-language-row">
+        <div class="chip" data-lang-choice="en">🇬🇧 <span>English</span></div>
+        <div class="chip" data-lang-choice="ru">🇷🇺 <span>Русский</span></div>
+        <div class="chip" data-lang-choice="uz">🇺🇿 <span>Oʻzbekcha</span></div>
+      </div>
+    </div>
+
+    <div class="glass card">
+      <div class="card-label" data-i18n="yourMainCurrency">Your main currency</div>
+      <div class="row-between" style="cursor:pointer;" onclick="openCurrencyPicker('onboarding')">
+        <div class="row gap-md">
+          <div class="currency-symbol-lg" id="ob-currency-symbol">$</div>
+          <div>
+            <div style="font-weight:800;" id="ob-currency-code">USD</div>
+            <div style="font-size:12px; color:var(--text-3);" id="ob-currency-name">US Dollar</div>
+          </div>
+        </div>
+        <span class="link-btn" data-i18n="change">Change</span>
+      </div>
+    </div>
+
+    <div class="glass card">
+      <div class="card-label" data-i18n="appearance">Appearance</div>
+      <div class="type-toggle" id="ob-theme-row">
+        <div class="chip" data-theme-choice="light">☀️ <span data-i18n="light">Light</span></div>
+        <div class="chip" data-theme-choice="dark">🌙 <span data-i18n="dark">Dark</span></div>
+        <div class="chip" data-theme-choice="system">⚙️ <span data-i18n="auto">Auto</span></div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-block" style="margin-top:26px;" onclick="finishOnboarding()" data-i18n="getStarted">Get started</button>
+  </div>
+
+  <!-- ============================= DASHBOARD ============================= -->
+  <div class="screen" id="screen-dashboard">
+    <div class="row-between">
+      <div>
+        <div class="page-sub" id="db-month-label">This month</div>
+        <h1 class="page-title" style="margin-top:0;" data-i18n="overview">Overview</h1>
+      </div>
+    </div>
+
+    <div class="glass card">
+      <div class="row-between" style="margin-bottom:0;">
+        <div class="card-label" style="margin-bottom:0;" data-i18n="netBalance">Net balance</div>
+        <button id="privacy-toggle-btn" onclick="togglePrivacy()" style="background:none; border:none; cursor:pointer; font-size:16px; padding:2px 4px;">👁️</button>
+      </div>
+      <div class="balance-value" id="db-balance" onclick="handleBalanceTap()" style="cursor:pointer; user-select:none;">$0</div>
+      <div class="split-row">
+        <div class="split-item">
+          <div class="dot" style="background:var(--income);"></div>
+          <div><div class="split-label" data-i18n="income">Income</div><div class="split-value" id="db-income">$0</div></div>
+        </div>
+        <div class="split-item">
+          <div class="dot" style="background:var(--expense);"></div>
+          <div><div class="split-label" data-i18n="expenses">Expenses</div><div class="split-value" id="db-expense">$0</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass card hidden" id="db-savings-card">
+      <div class="card-label" style="margin-bottom:0;" data-i18n="totalSavedGoals">Total saved across goals</div>
+      <div class="balance-value" style="font-size:26px; color:var(--accent);" id="db-savings-total">$0</div>
+    </div>
+
+    <div class="glass card hidden" id="db-commission-card">
+      <div class="row-between" style="margin-bottom:0;">
+        <div class="card-label" style="margin-bottom:0;" data-i18n="commissionThisMonth">Commission paid this month</div>
+        <span style="font-size:16px;">💸</span>
+      </div>
+      <div class="balance-value" style="font-size:26px; color:var(--warn);" id="db-commission-total">$0</div>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title" data-i18n="recentActivity">Recent activity</div>
+      <button class="link-btn" onclick="switchTab('transactions')" data-i18n="seeAll">See all</button>
+    </div>
+    <div class="glass card" style="margin-top:0;" id="db-recent-list"></div>
+  </div>
+
+  <!-- ============================= TRANSACTIONS ============================= -->
+  <div class="screen" id="screen-transactions">
+    <div class="row-between">
+      <h1 class="page-title" data-i18n="history">History</h1>
+    </div>
+    <div class="chip-row" style="margin-top:10px;">
+      <div class="chip active" data-tx-filter="all" onclick="setTxFilter('all')" data-i18n="all">All</div>
+      <div class="chip" data-tx-filter="income" onclick="setTxFilter('income')" data-i18n="incomeF">Income</div>
+      <div class="chip" data-tx-filter="expense" onclick="setTxFilter('expense')" data-i18n="expenseF">Expense</div>
+    </div>
+    <div class="glass card" id="tx-list"></div>
+    <div style="text-align:center; font-size:11px; color:var(--text-3); margin-top:10px;" data-i18n="tapToEditHint">Tap a transaction to edit or delete it</div>
+  </div>
+
+  <!-- ============================= ANALYTICS / MONTHLY REPORT ============================= -->
+  <div class="screen" id="screen-analytics">
+    <h1 class="page-title" data-i18n="monthlyReport">Monthly report</h1>
+
+    <div class="glass card row-between" style="padding:12px 16px;">
+      <button class="icon-btn" style="width:38px; height:38px; font-size:18px;" onclick="changeReportMonth(-1)">‹</button>
+      <div id="report-month-label" style="font-weight:800; font-size:16px; font-family:var(--font-display);">July 2026</div>
+      <button class="icon-btn" style="width:38px; height:38px; font-size:18px;" id="report-next-btn" onclick="changeReportMonth(1)">›</button>
+    </div>
+
+    <div id="report-capture">
+    <div class="glass card">
+      <div class="card-label" style="margin-bottom:0;" data-i18n="netBalance">Net balance</div>
+      <div class="balance-value" id="rep-balance" style="font-size:30px;">$0</div>
+      <div class="split-row">
+        <div class="split-item">
+          <div class="dot" style="background:var(--income);"></div>
+          <div><div class="split-label" data-i18n="income">Income</div><div class="split-value" id="rep-income">$0</div></div>
+        </div>
+        <div class="split-item">
+          <div class="dot" style="background:var(--expense);"></div>
+          <div><div class="split-label" data-i18n="expenses">Expenses</div><div class="split-value" id="rep-expense">$0</div></div>
+        </div>
+        <div class="split-item">
+          <div class="dot" style="background:var(--warn);"></div>
+          <div><div class="split-label" data-i18n="commissionF">Commission</div><div class="split-value" id="rep-commission">$0</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass card">
+      <div class="card-label" data-i18n="comparedToLastMonth">Compared to last month</div>
+      <div id="rep-compare"></div>
+    </div>
+
+    <div class="glass card" style="text-align:center;">
+      <div class="card-label" data-i18n="spendingByCategory">Spending by category</div>
+      <div id="pie-empty" class="empty-state hidden" data-i18n="noExpensesMonth">No expenses this month yet</div>
+      <div id="pie-wrap" style="display:flex; justify-content:center; margin:14px 0;"></div>
+      <div id="pie-legend" style="text-align:left;"></div>
+    </div>
+    </div>
+
+    <div class="glass card">
+      <div class="card-label" style="margin-bottom:10px;" data-i18n="exportThisReport">Export this report</div>
+      <div class="row gap-sm">
+        <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="exportReportImage()">🖼️ <span data-i18n="exportImage">Image</span></button>
+        <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="exportReportPDF()">📄 <span data-i18n="exportPDF">PDF</span></button>
+        <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="exportReportExcel()">📊 <span data-i18n="exportExcel">Excel</span></button>
+      </div>
+      <div id="export-status" style="font-size:11.5px; color:var(--text-3); margin-top:8px; text-align:center;"></div>
+    </div>
+
+    <div class="glass card">
+      <div class="card-label" data-i18n="incomeVsExpenses6">Income vs expenses (6 months)</div>
+      <div id="bar-wrap" style="overflow-x:auto; margin-top:8px;"></div>
+      <div class="row gap-md" style="margin-top:10px;">
+        <div class="row gap-sm"><div class="dot" style="background:var(--income);"></div><span style="font-size:12px; color:var(--text-3);" data-i18n="income">Income</span></div>
+        <div class="row gap-sm"><div class="dot" style="background:var(--expense);"></div><span style="font-size:12px; color:var(--text-3);" data-i18n="expenseF">Expense</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================= BUDGETS ============================= -->
+  <div class="screen" id="screen-budgets">
+    <h1 class="page-title" data-i18n="budgetsTitle">Budgets</h1>
+    <div class="glass card">
+      <div class="card-label" data-i18n="monthlyLimits">Monthly limits per category</div>
+      <div id="budget-list"></div>
+    </div>
+    <div class="section-header">
+      <div class="section-title" data-i18n="savingsGoals">Savings goals</div>
+      <button class="icon-btn" style="width:36px;height:36px;font-size:16px;" onclick="openGoalModal()">➕</button>
+    </div>
+    <div id="goals-list"></div>
+  </div>
+
+  <!-- ============================= SETTINGS ============================= -->
+  <div class="screen" id="screen-settings">
+    <h1 class="page-title" data-i18n="settingsTitle">Settings</h1>
+
+    <div class="glass card">
+      <div class="card-label" data-i18n="cloudSync">Cloud sync</div>
+      <div id="cloud-signed-out">
+        <button class="btn btn-secondary btn-block" onclick="signInWithGoogle()">
+          <span>🔗</span> <span data-i18n="signInGoogle">Sign in with Google</span>
+        </button>
+        <div style="font-size:12px; color:var(--text-3); margin-top:8px;" data-i18n="cloudSyncDesc">Sign in to back up your data to the cloud and restore it on any device.</div>
+      </div>
+      <div id="cloud-signed-in" class="hidden">
+        <div class="row-between">
+          <div class="row gap-md">
+            <img id="cloud-user-photo" src="" style="width:36px; height:36px; border-radius:50%;" onerror="this.style.display='none'">
+            <div>
+              <div style="font-weight:700;" id="cloud-user-name"></div>
+              <div style="font-size:12px; color:var(--text-3);" id="cloud-sync-status"></div>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-secondary" onclick="signOutUser()" data-i18n="signOut">Sign out</button>
+        </div>
+        <div class="row gap-sm" style="margin-top:12px;">
+          <button class="btn btn-sm btn-secondary" style="flex:1;" onclick="manualRestoreFromCloud()" data-i18n="restoreFromCloud">⬇️ Restore from cloud</button>
+          <button class="btn btn-sm btn-secondary" style="flex:1;" onclick="manualPushToCloud()" data-i18n="pushToCloud">⬆️ Push to cloud</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass card">
+      <div class="card-label" data-i18n="currency">Currency</div>
+      <div class="row-between" style="cursor:pointer;" onclick="openCurrencyPicker('settings')">
+        <div class="row gap-md">
+          <div class="currency-symbol-lg" style="font-size:22px; width:40px;" id="st-currency-symbol">$</div>
+          <div><div style="font-weight:800;" id="st-currency-code">USD</div><div style="font-size:12px; color:var(--text-3);" id="st-currency-name">US Dollar</div></div>
+        </div>
+        <span style="color:var(--text-3);">›</span>
+      </div>
+    </div>
+
+    <div class="glass card">
+      <div class="card-label" data-i18n="appearance">Appearance</div>
+      <div class="type-toggle" id="st-theme-row">
+        <div class="chip" data-theme-choice="light">☀️ <span data-i18n="light">Light</span></div>
+        <div class="chip" data-theme-choice="dark">🌙 <span data-i18n="dark">Dark</span></div>
+        <div class="chip" data-theme-choice="system">⚙️ <span data-i18n="auto">Auto</span></div>
+      </div>
+    </div>
+
+    <div class="glass card">
+      <div class="card-label" data-i18n="language">Language</div>
+      <div class="type-toggle" id="st-language-row">
+        <div class="chip" data-lang-choice="en">🇬🇧 <span>English</span></div>
+        <div class="chip" data-lang-choice="ru">🇷🇺 <span>Русский</span></div>
+        <div class="chip" data-lang-choice="uz">🇺🇿 <span>Oʻzbekcha</span></div>
+      </div>
+    </div>
+
+    <div class="glass card" style="cursor:pointer;" onclick="openCategoryManager()">
+      <div class="row gap-md">
+        <span style="font-size:18px;">🏷️</span>
+        <div style="font-weight:700; flex:1;" data-i18n="manageCategories">Manage categories</div>
+        <span style="color:var(--text-3);">›</span>
+      </div>
+    </div>
+
+    <div class="glass card" style="cursor:pointer;" onclick="exportData()">
+      <div class="row gap-md">
+        <span style="font-size:18px;">⬇️</span>
+        <div style="font-weight:700; flex:1;" data-i18n="exportBackup">Export backup (JSON)</div>
+      </div>
+      <div style="font-size:12px; color:var(--text-3); margin-top:6px;" data-i18n="exportBackupDesc">Everything is stored only on this device — nothing is sent to a server.</div>
+    </div>
+
+    <div class="glass card" style="cursor:pointer;" onclick="document.getElementById('import-file').click()">
+      <div class="row gap-md">
+        <span style="font-size:18px;">⬆️</span>
+        <div style="font-weight:700; flex:1;" data-i18n="importBackup">Import backup</div>
+      </div>
+      <input type="file" id="import-file" accept="application/json" class="hidden" onchange="importData(event)">
+    </div>
+
+    <div class="glass card" style="cursor:pointer;" onclick="confirmReset()">
+      <div class="row gap-md">
+        <span style="font-size:18px;">🗑️</span>
+        <div style="font-weight:700; flex:1; color:var(--danger);" data-i18n="resetAllData">Reset all data</div>
+      </div>
+    </div>
+
+    <div style="text-align:center; font-size:12px; color:var(--text-3); margin-top:20px;" data-i18n="appFooter">Current · Local-first · v1.0.0</div>
+  </div>
+
+</div>
+
+<!-- FAB (floating top-right, Telegram-style) -->
+<button class="fab fab-top" id="global-fab" onclick="openAddSheet()">➕</button>
+
+<!-- ============================= TAB BAR ============================= -->
+<div class="tabbar" id="tabbar">
+  <div class="tabbar-inner">
+    <button class="tab-btn active" data-tab="dashboard" onclick="switchTab('dashboard')"><span class="tab-icon">🏠</span><span class="tab-label" data-i18n="tabHome">Home</span></button>
+    <button class="tab-btn" data-tab="transactions" onclick="switchTab('transactions')"><span class="tab-icon">📋</span><span class="tab-label" data-i18n="tabHistory">History</span></button>
+    <button class="tab-btn" data-tab="analytics" onclick="switchTab('analytics')"><span class="tab-icon">📊</span><span class="tab-label" data-i18n="tabStats">Stats</span></button>
+    <button class="tab-btn" data-tab="budgets" onclick="switchTab('budgets')"><span class="tab-icon">🎯</span><span class="tab-label" data-i18n="tabBudgets">Budgets</span></button>
+    <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')"><span class="tab-icon">⚙️</span><span class="tab-label" data-i18n="tabSettings">Settings</span></button>
+  </div>
+</div>
+
+<!-- ============================= CURRENCY PICKER SHEET ============================= -->
+<div class="sheet-backdrop" id="currency-backdrop" onclick="closeCurrencyPicker()"></div>
+<div class="sheet glass-strong" id="currency-sheet">
+  <div class="sheet-handle"></div>
+  <h3 style="margin:0 0 12px;" data-i18n="chooseCurrency">Choose currency</h3>
+  <div id="currency-list" style="max-height:50vh; overflow-y:auto;"></div>
+</div>
+
+<!-- ============================= ADD TRANSACTION SHEET ============================= -->
+<!-- ============================= CLOUD SYNC CONFLICT SHEET ============================= -->
+<div class="sheet-backdrop" id="sync-conflict-backdrop"></div>
+<div class="sheet glass-strong" id="sync-conflict-sheet">
+  <div class="sheet-handle"></div>
+  <h3 style="margin:0 0 8px;" data-i18n="cloudDataFound">Cloud backup found</h3>
+  <div style="font-size:13px; color:var(--text-3); margin-bottom:18px;" data-i18n="cloudDataFoundDesc">This Google account already has data saved. Which version do you want to keep?</div>
+  <button class="btn btn-primary btn-block" style="margin-bottom:10px;" onclick="resolveSyncConflict('cloud')" data-i18n="useCloudData">Use cloud data</button>
+  <button class="btn btn-secondary btn-block" onclick="resolveSyncConflict('local')" data-i18n="useThisDevice">Keep this device's data</button>
+</div>
+
+<div class="sheet-backdrop" id="add-backdrop" onclick="closeAddSheet()"></div>
+<div class="sheet glass-strong" id="add-sheet">
+  <div class="sheet-handle"></div>
+  <div class="row-between" style="margin-bottom:14px;">
+    <h3 style="margin:0;" id="add-sheet-title" data-i18n="newTransaction">New transaction</h3>
+    <button class="icon-btn" style="width:34px;height:34px;font-size:16px;" onclick="closeAddSheet()">✕</button>
+  </div>
+
+  <div class="type-toggle" id="add-type-row">
+    <div class="chip" data-type-choice="expense" data-i18n="expenseLabel">Expense</div>
+    <div class="chip" data-type-choice="income" data-i18n="incomeLabel">Income</div>
+  </div>
+
+  <div class="row" style="margin-top:10px;">
+    <div class="chip" style="background:transparent; border:1px dashed var(--glass-border); color:var(--text-3); font-size:13px;" onclick="openAddDatePicker()" id="add-date-chip">
+      <span>📅</span><span id="add-date-label">Today</span>
+    </div>
+    <input type="date" id="add-date-input" class="hidden" onchange="onAddDateChange()">
+  </div>
+
+  <div class="row-between" style="margin-top:14px; padding:2px;">
+    <div class="row gap-sm">
+      <span style="font-size:15px;">💸</span>
+      <span style="font-weight:700; font-size:13.5px;" data-i18n="commissionToggle">Commission fee</span>
+    </div>
+    <div class="switch-track" id="add-commission-switch" onclick="toggleAddCommission()"><div class="switch-knob"></div></div>
+  </div>
+
+  <div class="glass card hidden" id="add-commission-card" style="margin-top:10px; padding:14px;">
+    <div class="card-label" style="margin-bottom:8px;" data-i18n="commissionPercentLabel">Commission %</div>
+    <div class="row gap-sm">
+      <input class="input" id="add-commission-percent" type="number" inputmode="decimal" placeholder="e.g. 1.5" style="flex:1;" oninput="renderCommissionPreview()">
+      <div style="font-weight:800; font-size:13.5px; white-space:nowrap; color:var(--warn); min-width:70px; text-align:right;" id="add-commission-preview"></div>
+    </div>
+  </div>
+
+  <div class="glass card" style="margin-top:14px;">
+    <div class="card-label" data-i18n="amount">Amount</div>
+    <div class="row gap-sm" style="margin-top:8px;">
+      <div class="chip" style="background:rgba(140,124,255,0.15); color:var(--accent); cursor:pointer;" onclick="openCurrencyPicker('add')" id="add-currency-tag">USD ▾</div>
+      <input class="input" style="border:none; background:transparent; font-size:26px; font-weight:800; padding:6px 0;" id="add-amount" type="number" inputmode="decimal" placeholder="0.00" oninput="renderCommissionPreview()">
+    </div>
+  </div>
+
+  <div style="margin-top:14px;">
+    <div class="card-label" style="margin-left:2px;" data-i18n="category">Category</div>
+    <div class="chip-row" id="add-category-row" style="margin-top:6px;"></div>
+  </div>
+
+  <div class="glass card">
+    <div class="card-label" data-i18n="notesOptional">Notes (optional)</div>
+    <textarea class="textarea" id="add-notes" style="border:none; background:transparent; padding:6px 2px 2px; line-height:1.5;" placeholder="Add a note..." data-i18n-ph="addANote"></textarea>
+  </div>
+
+  <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="saveTransaction()" id="add-save-btn" data-i18n="saveTransaction">Save transaction</button>
+  <button class="btn btn-danger btn-block hidden" style="margin-top:10px;" onclick="deleteFromEditSheet()" id="add-delete-btn" data-i18n="deleteTransaction">Delete transaction</button>
+</div>
+
+<!-- ============================= CATEGORY MANAGER SHEET ============================= -->
+<div class="sheet-backdrop" id="catmgr-backdrop" onclick="closeCategoryManager()"></div>
+<div class="sheet glass-strong" id="catmgr-sheet" style="max-height:90vh;">
+  <div class="sheet-handle"></div>
+  <div class="row-between" style="margin-bottom:10px;">
+    <h3 style="margin:0;" data-i18n="categoriesTitle">Categories</h3>
+    <button class="icon-btn" style="width:34px;height:34px;font-size:16px;" onclick="openCategoryEditor(null)">➕</button>
+  </div>
+  <div class="type-toggle" id="catmgr-type-row">
+    <div class="chip" data-catmgr-type="expense" data-i18n="expenseLabel">Expense</div>
+    <div class="chip" data-catmgr-type="income" data-i18n="incomeLabel">Income</div>
+  </div>
+  <div id="catmgr-list" style="margin-top:12px;"></div>
+  <button class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="closeCategoryManager()" data-i18n="doneLabel">Done</button>
+</div>
+
+<!-- ============================= CATEGORY EDITOR MODAL ============================= -->
+<div class="modal-backdrop" id="catedit-backdrop">
+  <div class="glass glass-strong modal-card">
+    <div class="card-label" data-i18n="name">Name</div>
+    <input class="input" id="catedit-name" placeholder="Category name" data-i18n-ph="categoryNamePlaceholder">
+    <div class="card-label" style="margin-top:14px;" data-i18n="iconEmoji">Icon (emoji)</div>
+    <input class="input" id="catedit-icon" maxlength="2" placeholder="🙂">
+    <div class="card-label" style="margin-top:14px;" data-i18n="color">Color</div>
+    <div class="color-grid" id="catedit-colors"></div>
+    <div class="row gap-sm" style="margin-top:20px;">
+      <button class="btn btn-secondary" style="flex:1;" onclick="closeCategoryEditor()" data-i18n="cancel">Cancel</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="saveCategory()" data-i18n="save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= BUDGET EDIT MODAL ============================= -->
+<div class="modal-backdrop" id="budgetedit-backdrop">
+  <div class="glass glass-strong modal-card">
+    <div class="card-label" data-i18n="setMonthlyLimit">Set monthly limit</div>
+    <input class="input" id="budgetedit-amount" type="number" inputmode="decimal" placeholder="0.00">
+    <div class="row gap-sm" style="margin-top:18px;">
+      <button class="btn btn-secondary" style="flex:1;" onclick="closeBudgetEditor()" data-i18n="cancel">Cancel</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="saveBudgetEdit()" data-i18n="save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= SAVINGS GOAL MODAL ============================= -->
+<div class="modal-backdrop" id="goal-backdrop">
+  <div class="glass glass-strong modal-card">
+    <div class="card-label" data-i18n="newSavingsGoal">New savings goal</div>
+    <input class="input" id="goal-name" placeholder="e.g. Emergency fund" data-i18n-ph="goalNamePlaceholder">
+    <input class="input" id="goal-target" type="number" inputmode="decimal" placeholder="Target amount" style="margin-top:10px;" data-i18n-ph="targetAmountPlaceholder">
+    <div class="row gap-sm" style="margin-top:18px;">
+      <button class="btn btn-secondary" style="flex:1;" onclick="closeGoalModal()" data-i18n="cancel">Cancel</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="saveGoal()" data-i18n="create">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export libraries: only used when you tap an export button. Everything else in this app works without internet. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<!-- ============================= FIREBASE (Cloud Sync) =============================
+     1. Create a free project at https://console.firebase.google.com
+     2. Enable "Google" as a Sign-in method under Authentication > Sign-in method
+     3. Create a Firestore database (Authentication > Firestore Database > Create database)
+     4. In Project settings > General, add a Web App and copy its config into FIREBASE_CONFIG below
+     5. In Firestore Rules, use:
+        rules_version = '2';
+        service cloud.firestore {
+          match /databases/{database}/documents {
+            match /users/{userId} {
+              allow read, write: if request.auth != null && request.auth.uid == userId;
+            }
+          }
+        }
+================================================================================= -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDmEcNcde8RpoQpR5vACHvjez2sNqT7FpI",
+  authDomain: "current-951a7.firebaseapp.com",
+  projectId: "current-951a7",
+  storageBucket: "current-951a7.firebasestorage.app",
+  messagingSenderId: "745478267945",
+  appId: "1:745478267945:web:f82eca54919b9cde146838"
+};
+
+let cloudUser = null;
+let cloudDb = null;
+let syncDebounceTimer = null;
+let suppressNextCloudPush = false; // true while we're writing state pulled FROM the cloud
+
+function firebaseReady(){
+  return FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY';
+}
+
+function initFirebase(){
+  if(!firebaseReady()) return;
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    cloudDb = firebase.firestore();
+    firebase.auth().onAuthStateChanged(handleAuthChange);
+  }catch(e){
+    console.warn('Firebase init failed', e);
+  }
+}
+
+function signInWithGoogle(){
+  if(!firebaseReady()){
+    alert('Cloud sync is not configured yet. Add your Firebase project keys in index.html (FIREBASE_CONFIG).');
+    return;
+  }
+  const provider = new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithPopup(provider).catch(e=>{
+    console.error('Sign-in failed', e);
+    alert('Sign-in failed: ' + e.message);
+  });
+}
+
+function signOutUser(){
+  firebase.auth().signOut();
+}
+
+function cloudResolvedKey(uid){ return 'current_cloud_resolved_' + uid; }
+
+async function handleAuthChange(user){
+  cloudUser = user;
+  const signedOutEl = document.getElementById('cloud-signed-out');
+  const signedInEl = document.getElementById('cloud-signed-in');
+  if(!signedOutEl || !signedInEl) return;
+
+  if(!user){
+    signedOutEl.classList.remove('hidden');
+    signedInEl.classList.add('hidden');
+    return;
+  }
+
+  signedOutEl.classList.add('hidden');
+  signedInEl.classList.remove('hidden');
+  document.getElementById('cloud-user-name').textContent = user.displayName || user.email || 'Google account';
+  document.getElementById('cloud-user-photo').src = user.photoURL || '';
+  setSyncStatus(t('syncing'));
+
+  try{
+    const alreadyResolved = localStorage.getItem(cloudResolvedKey(user.uid)) === '1';
+    const docRef = cloudDb.collection('users').doc(user.uid);
+    const doc = await docRef.get();
+    if(doc.exists){
+      const cloudState = doc.data();
+      const cloudHasData = cloudState && Array.isArray(cloudState.transactions) && cloudState.transactions.length > 0;
+      const localHasData = state.transactions && state.transactions.length > 0;
+      if(cloudHasData && localHasData && !alreadyResolved){
+        // First time this account+device combo has both — ask once, then remember the choice.
+        openSyncConflictSheet(cloudState, user.uid);
+      } else if(cloudHasData && !localHasData){
+        applyCloudState(cloudState);
+        localStorage.setItem(cloudResolvedKey(user.uid), '1');
+      } else {
+        // Already resolved before, or local is the only source of truth — just keep pushing local up.
+        await pushStateToCloud();
+        localStorage.setItem(cloudResolvedKey(user.uid), '1');
+      }
+    } else {
+      await pushStateToCloud();
+      localStorage.setItem(cloudResolvedKey(user.uid), '1');
+    }
+    setSyncStatus(t('syncedJustNow'));
+  }catch(e){
+    console.error('Cloud sync error', e);
+    setSyncStatus(t('syncFailed'));
+  }
+}
+
+let pendingCloudState = null;
+let pendingCloudUid = null;
+function openSyncConflictSheet(cloudState, uid){
+  pendingCloudState = cloudState;
+  pendingCloudUid = uid;
+  document.getElementById('sync-conflict-backdrop').classList.add('active');
+  document.getElementById('sync-conflict-sheet').classList.add('active');
+}
+function resolveSyncConflict(choice){
+  document.getElementById('sync-conflict-backdrop').classList.remove('active');
+  document.getElementById('sync-conflict-sheet').classList.remove('active');
+  if(choice === 'cloud' && pendingCloudState){
+    applyCloudState(pendingCloudState);
+  } else {
+    pushStateToCloud();
+  }
+  if(pendingCloudUid) localStorage.setItem(cloudResolvedKey(pendingCloudUid), '1');
+  pendingCloudState = null;
+  pendingCloudUid = null;
+}
+
+// Manual controls, reachable anytime from Settings, so the popup never has to interrupt.
+async function manualRestoreFromCloud(){
+  if(!cloudUser || !cloudDb) return;
+  if(!confirm(t('confirmRestoreCloud'))) return;
+  setSyncStatus(t('syncing'));
+  try{
+    const doc = await cloudDb.collection('users').doc(cloudUser.uid).get();
+    if(doc.exists){
+      applyCloudState(doc.data());
+      localStorage.setItem(cloudResolvedKey(cloudUser.uid), '1');
+    }
+  }catch(e){
+    console.error('Restore failed', e);
+    setSyncStatus(t('syncFailed'));
+  }
+}
+async function manualPushToCloud(){
+  if(!cloudUser) return;
+  if(!confirm(t('confirmPushCloud'))) return;
+  await pushStateToCloud();
+  localStorage.setItem(cloudResolvedKey(cloudUser.uid), '1');
+}
+
+function applyCloudState(cloudState){
+  suppressNextCloudPush = true;
+  state = Object.assign(defaultState(), cloudState);
+  saveState();
+  applyTheme();
+  applyStaticTranslations();
+  renderLanguageChips();
+  renderThemeChips();
+  switchTab(document.querySelector('.tab-btn.active')?.dataset.tab || 'dashboard');
+  setSyncStatus(t('syncedJustNow'));
+}
+
+async function pushStateToCloud(){
+  if(!cloudUser || !cloudDb) return;
+  try{
+    await cloudDb.collection('users').doc(cloudUser.uid).set(state);
+    setSyncStatus(t('syncedJustNow'));
+  }catch(e){
+    console.error('Push to cloud failed', e);
+    setSyncStatus(t('syncFailed'));
+  }
+}
+
+function setSyncStatus(text){
+  const el = document.getElementById('cloud-sync-status');
+  if(el) el.textContent = text;
+}
+
+// Debounced cloud push, called from saveState()
+function queueCloudSync(){
+  if(!cloudUser) return;
+  if(suppressNextCloudPush){ suppressNextCloudPush = false; return; }
+  setSyncStatus(t('syncing'));
+  clearTimeout(syncDebounceTimer);
+  syncDebounceTimer = setTimeout(pushStateToCloud, 1200);
+}
+
+initFirebase();
+</script>
+
+<script>
+/* ============================================================================
+   CURRENT — local-first expense tracker
+   Single-file app. All data lives in localStorage. Nothing is sent anywhere.
+============================================================================ */
+
+/* ---------- Constants ---------- */
+const CURRENCIES = [
+  {code:'USD', symbol:'$', name:'US Dollar'},
+  {code:'UZS', symbol:"UZS", name:'Uzbekistani Som'},
+  {code:'EUR', symbol:'€', name:'Euro'},
+  {code:'GBP', symbol:'£', name:'British Pound'},
+  {code:'RUB', symbol:'₽', name:'Russian Ruble'},
+  {code:'JPY', symbol:'¥', name:'Japanese Yen'},
+  {code:'CNY', symbol:'¥', name:'Chinese Yuan'},
+  {code:'KZT', symbol:'₸', name:'Kazakhstani Tenge'},
+  {code:'TRY', symbol:'₺', name:'Turkish Lira'},
+  {code:'INR', symbol:'₹', name:'Indian Rupee'},
+  {code:'AED', symbol:'د.إ', name:'UAE Dirham'},
+  {code:'KRW', symbol:'₩', name:'South Korean Won'},
+];
+const COLOR_OPTIONS = ['#FF9F43','#FF6B6B','#54A0FF','#EE5A6F','#1DD1A1','#00D2D3','#5F27CD','#2E86DE','#8395A7','#10AC84','#FECA57','#8C7CFF'];
+
+const DEFAULT_CATEGORIES = [
+  {id:'food', name:'Food', icon:'🍔', color:'#FF9F43', type:'expense'},
+  {id:'groceries', name:'Groceries / Household', icon:'🍅', color:'#FF6B6B', type:'expense'},
+  {id:'transport', name:'Transportation', icon:'🚎', color:'#54A0FF', type:'expense'},
+  {id:'gifts', name:'Gifts & Shopping', icon:'🛍', color:'#EE5A6F', type:'expense'},
+  {id:'utility', name:'Utility / Communal', icon:'🏡', color:'#1DD1A1', type:'expense'},
+  {id:'gym', name:'GYM / Health', icon:'💪', color:'#00D2D3', type:'expense'},
+  {id:'saving', name:'Saving / Investment', icon:'💲', color:'#5F27CD', type:'expense'},
+  {id:'internet', name:'Internet / Mobile', icon:'🌐', color:'#2E86DE', type:'expense'},
+  {id:'other_expense', name:'Other', icon:'🚦', color:'#8395A7', type:'expense'},
+  {id:'salary', name:'Salary', icon:'💼', color:'#10AC84', type:'income'},
+  {id:'cards', name:'My Cards', icon:'💳', color:'#00D2D3', type:'income'},
+  {id:'borrowed', name:'Took From', icon:'🤝', color:'#FECA57', type:'income'},
+  {id:'other_income', name:'Other', icon:'✨', color:'#8395A7', type:'income'},
+];
+
+const STORAGE_KEY = 'currentAppData';
+
+/* ============================================================================
+   TRANSLATIONS (English / Russian / Uzbek)
+============================================================================ */
+const TRANSLATIONS = {
+en: {
+  tabHome:'Home', tabHistory:'History', tabStats:'Stats', tabBudgets:'Budgets', tabSettings:'Settings',
+  overview:'Overview', netBalance:'Net balance', income:'Income', expenses:'Expenses',
+  totalSavedGoals:'Total saved across goals', recentActivity:'Recent activity', seeAll:'See all',
+  noTransactionsYet:'No transactions yet. Tap ➕ to add your first one.',
+  history:'History', all:'All', incomeF:'Income', expenseF:'Expense', tapToEditHint:'Tap a transaction to edit or delete it',
+  nothingHereYet:'Nothing here yet.',
+  monthlyReport:'Monthly report', spendingByCategory:'Spending by category', noExpensesMonth:'No expenses this month yet',
+  comparedToLastMonth:'Compared to last month', incomeVsExpenses6:'Income vs expenses (6 months)',
+  notEnoughHistory:'Not enough history yet — add transactions in more than one month to see comparisons.',
+  differenceVsLastMonth:'Difference vs last month', averageMonthlyChange:'Average monthly change', percentageChange:'Percentage change',
+  exportThisReport:'Export this report', exportImage:'Image', exportPDF:'PDF', exportExcel:'Excel',
+  budgetsTitle:'Budgets', monthlyLimits:'Monthly limits per category', setLimit:'Set limit',
+  savingsGoals:'Savings goals', noSavingsGoals:'No savings goals yet. Tap ➕ to create one.',
+  withdraw:'Withdraw', add:'Add', amountPlaceholder:'Amount',
+  settingsTitle:'Settings', currency:'Currency', appearance:'Appearance', light:'Light', dark:'Dark', auto:'Auto',
+  manageCategories:'Manage categories', data:'Data', exportBackup:'Export backup (JSON)',
+  exportBackupDesc:'Everything is stored only on this device — nothing is sent to a server.',
+  importBackup:'Import backup', resetAllData:'Reset all data', language:'Language',
+  newTransaction:'New transaction', editTransaction:'Edit transaction', amount:'Amount', category:'Category',
+  notesOptional:'Notes (optional)', addANote:'Add a note...', saveTransaction:'Save transaction',
+  saveChanges:'Save changes', deleteTransaction:'Delete transaction', expenseLabel:'Expense', incomeLabel:'Income',
+  categoriesTitle:'Categories', name:'Name', iconEmoji:'Icon (emoji)', color:'Color', cancel:'Cancel', save:'Save', doneLabel:'Done',
+  welcome:'Welcome to Current', setupSubtitle:"Let's set up your tracker — takes about 10 seconds.",
+  yourMainCurrency:'Your main currency', change:'Change', getStarted:'Get started', chooseCurrency:'Choose currency',
+  setMonthlyLimit:'Set monthly limit', newSavingsGoal:'New savings goal', goalNamePlaceholder:'e.g. Emergency fund',
+  targetAmountPlaceholder:'Target amount', create:'Create', appFooter:'Current · Local-first · v1.0.0',
+  confirmDeleteTx:'Delete this transaction?', enterValidAmount:'Enter a valid amount', pickCategory:'Pick a category',
+  enterValidAmountFirst:'Enter a valid amount first', confirmDeleteGoal:'Delete this savings goal?',
+  fillGoalFields:'Fill in a name and a valid target amount', confirmResetAll:'This permanently deletes every transaction, category, budget, and goal on this device. This cannot be undone. Continue?',
+  backupImported:'Backup imported successfully.', backupInvalid:'That file could not be read as a valid backup.',
+  confirmDeleteCategory:"Delete this category? Existing transactions keep the label but it won't be selectable for new ones.",
+  enterCategoryName:'Enter a category name', categoryNamePlaceholder:'Category name', uncategorized:'Uncategorized',
+  cloudSync:'Cloud sync', signInGoogle:'Sign in with Google',
+  cloudSyncDesc:'Sign in to back up your data to the cloud and restore it on any device.',
+  signOut:'Sign out', syncedJustNow:'Synced just now', syncing:'Syncing…', syncFailed:'Sync failed — will retry',
+  cloudDataFound:'Cloud backup found', useCloudData:'Use cloud data', useThisDevice:"Keep this device's data",
+  cloudDataFoundDesc:'This Google account already has data saved. Which version do you want to keep?',
+  today:'Today', yesterday:'Yesterday', selectDate:'Select date',
+  restoreFromCloud:'⬇️ Restore from cloud', pushToCloud:'⬆️ Push to cloud',
+  confirmRestoreCloud:'This will replace the data on this device with your cloud backup. Continue?',
+  confirmPushCloud:'This will overwrite your cloud backup with the data on this device. Continue?',
+  commissionToggle:'Commission fee', commissionPercentLabel:'Commission %', commissionThisMonth:'Commission paid this month',
+  commissionF:'Commission', commissionAmount:'Commission amount',
+},
+ru: {
+  tabHome:'Главная', tabHistory:'История', tabStats:'Статистика', tabBudgets:'Бюджеты', tabSettings:'Настройки',
+  overview:'Обзор', netBalance:'Баланс', income:'Доход', expenses:'Расходы',
+  totalSavedGoals:'Всего накоплено по целям', recentActivity:'Последние операции', seeAll:'Все',
+  noTransactionsYet:'Пока нет операций. Нажмите ➕, чтобы добавить первую.',
+  history:'История', all:'Все', incomeF:'Доходы', expenseF:'Расходы', tapToEditHint:'Нажмите на операцию, чтобы изменить или удалить',
+  nothingHereYet:'Здесь пока пусто.',
+  monthlyReport:'Отчёт за месяц', spendingByCategory:'Расходы по категориям', noExpensesMonth:'В этом месяце пока нет расходов',
+  comparedToLastMonth:'По сравнению с прошлым месяцем', incomeVsExpenses6:'Доходы и расходы (6 месяцев)',
+  notEnoughHistory:'Пока недостаточно данных — добавьте операции за несколько месяцев, чтобы увидеть сравнение.',
+  differenceVsLastMonth:'Разница с прошлым месяцем', averageMonthlyChange:'Среднее изменение в месяц', percentageChange:'Изменение в процентах',
+  exportThisReport:'Экспорт отчёта', exportImage:'Картинка', exportPDF:'PDF', exportExcel:'Excel',
+  budgetsTitle:'Бюджеты', monthlyLimits:'Месячные лимиты по категориям', setLimit:'Задать лимит',
+  savingsGoals:'Накопительные цели', noSavingsGoals:'Пока нет накопительных целей. Нажмите ➕, чтобы создать.',
+  withdraw:'Снять', add:'Добавить', amountPlaceholder:'Сумма',
+  settingsTitle:'Настройки', currency:'Валюта', appearance:'Оформление', light:'Светлая', dark:'Тёмная', auto:'Авто',
+  manageCategories:'Управление категориями', data:'Данные', exportBackup:'Экспорт резервной копии (JSON)',
+  exportBackupDesc:'Все данные хранятся только на этом устройстве — ничего не отправляется на сервер.',
+  importBackup:'Импорт резервной копии', resetAllData:'Сбросить все данные', language:'Язык',
+  newTransaction:'Новая операция', editTransaction:'Изменить операцию', amount:'Сумма', category:'Категория',
+  notesOptional:'Заметка (необязательно)', addANote:'Добавить заметку...', saveTransaction:'Сохранить',
+  saveChanges:'Сохранить изменения', deleteTransaction:'Удалить операцию', expenseLabel:'Расход', incomeLabel:'Доход',
+  categoriesTitle:'Категории', name:'Название', iconEmoji:'Иконка (эмодзи)', color:'Цвет', cancel:'Отмена', save:'Сохранить', doneLabel:'Готово',
+  welcome:'Добро пожаловать в Current', setupSubtitle:'Настроим ваш трекер — это займёт около 10 секунд.',
+  yourMainCurrency:'Ваша основная валюта', change:'Изменить', getStarted:'Начать', chooseCurrency:'Выберите валюту',
+  setMonthlyLimit:'Задать месячный лимит', newSavingsGoal:'Новая накопительная цель', goalNamePlaceholder:'напр. Резервный фонд',
+  targetAmountPlaceholder:'Целевая сумма', create:'Создать', appFooter:'Current · Локальное хранение · v1.0.0',
+  confirmDeleteTx:'Удалить эту операцию?', enterValidAmount:'Введите корректную сумму', pickCategory:'Выберите категорию',
+  enterValidAmountFirst:'Сначала введите корректную сумму', confirmDeleteGoal:'Удалить эту накопительную цель?',
+  fillGoalFields:'Укажите название и корректную целевую сумму', confirmResetAll:'Это навсегда удалит все операции, категории, бюджеты и цели на этом устройстве. Это действие нельзя отменить. Продолжить?',
+  backupImported:'Резервная копия успешно импортирована.', backupInvalid:'Не удалось прочитать файл как резервную копию.',
+  confirmDeleteCategory:'Удалить эту категорию? В существующих операциях название сохранится, но выбрать её для новых будет нельзя.',
+  enterCategoryName:'Введите название категории', categoryNamePlaceholder:'Название категории', uncategorized:'Без категории',
+  cloudSync:'Синхронизация с облаком', signInGoogle:'Войти через Google',
+  cloudSyncDesc:'Войдите, чтобы сохранить данные в облаке и восстановить их на любом устройстве.',
+  signOut:'Выйти', syncedJustNow:'Синхронизировано только что', syncing:'Синхронизация…', syncFailed:'Ошибка синхронизации — повтор позже',
+  cloudDataFound:'Найдена резервная копия в облаке', useCloudData:'Использовать облачные данные', useThisDevice:'Оставить данные этого устройства',
+  cloudDataFoundDesc:'В этом Google-аккаунте уже есть сохранённые данные. Какую версию оставить?',
+  today:'Сегодня', yesterday:'Вчера', selectDate:'Выбрать дату',
+  restoreFromCloud:'⬇️ Восстановить из облака', pushToCloud:'⬆️ Отправить в облако',
+  confirmRestoreCloud:'Это заменит данные на этом устройстве резервной копией из облака. Продолжить?',
+  confirmPushCloud:'Это перезапишет облачную копию данными с этого устройства. Продолжить?',
+  commissionToggle:'Комиссия', commissionPercentLabel:'Комиссия %', commissionThisMonth:'Комиссия за этот месяц',
+  commissionF:'Комиссия', commissionAmount:'Сумма комиссии',
+},
+uz: {
+  tabHome:'Bosh sahifa', tabHistory:'Tarix', tabStats:'Statistika', tabBudgets:'Byudjet', tabSettings:'Sozlamalar',
+  overview:'Umumiy koʻrinish', netBalance:'Balans', income:'Daromad', expenses:'Xarajatlar',
+  totalSavedGoals:'Barcha maqsadlar boʻyicha jamgʻarma', recentActivity:'Soʻnggi amallar', seeAll:'Barchasi',
+  noTransactionsYet:'Hali amallar yoʻq. Birinchisini qoʻshish uchun ➕ bosing.',
+  history:'Tarix', all:'Barchasi', incomeF:'Daromad', expenseF:'Xarajat', tapToEditHint:'Amalni tahrirlash yoki oʻchirish uchun bosing',
+  nothingHereYet:'Bu yerda hali hech narsa yoʻq.',
+  monthlyReport:'Oylik hisobot', spendingByCategory:'Kategoriyalar boʻyicha xarajatlar', noExpensesMonth:'Bu oyda hali xarajat yoʻq',
+  comparedToLastMonth:'Oʻtgan oy bilan solishtirganda', incomeVsExpenses6:'Daromad va xarajat (6 oy)',
+  notEnoughHistory:'Hali maʼlumot yetarli emas — solishtirish uchun bir necha oy amallarini qoʻshing.',
+  differenceVsLastMonth:'Oʻtgan oy bilan farq', averageMonthlyChange:'Oʻrtacha oylik oʻzgarish', percentageChange:'Foizdagi oʻzgarish',
+  exportThisReport:'Hisobotni eksport qilish', exportImage:'Rasm', exportPDF:'PDF', exportExcel:'Excel',
+  budgetsTitle:'Byudjetlar', monthlyLimits:'Kategoriyalar boʻyicha oylik limit', setLimit:'Limit belgilash',
+  savingsGoals:'Jamgʻarma maqsadlari', noSavingsGoals:'Hali jamgʻarma maqsadi yoʻq. Yaratish uchun ➕ bosing.',
+  withdraw:'Yechish', add:'Qoʻshish', amountPlaceholder:'Summa',
+  settingsTitle:'Sozlamalar', currency:'Valyuta', appearance:'Koʻrinish', light:'Yorugʻ', dark:'Qorongʻi', auto:'Avto',
+  manageCategories:'Kategoriyalarni boshqarish', data:'Maʼlumotlar', exportBackup:'Zaxira nusxa eksport qilish (JSON)',
+  exportBackupDesc:'Barcha maʼlumotlar faqat shu qurilmada saqlanadi — hech narsa serverga yuborilmaydi.',
+  importBackup:'Zaxira nusxani import qilish', resetAllData:'Barcha maʼlumotlarni tozalash', language:'Til',
+  newTransaction:'Yangi amal', editTransaction:'Amalni tahrirlash', amount:'Summa', category:'Kategoriya',
+  notesOptional:'Izoh (ixtiyoriy)', addANote:'Izoh qoʻshish...', saveTransaction:'Saqlash',
+  saveChanges:'Oʻzgarishlarni saqlash', deleteTransaction:'Amalni oʻchirish', expenseLabel:'Xarajat', incomeLabel:'Daromad',
+  categoriesTitle:'Kategoriyalar', name:'Nomi', iconEmoji:'Ikonka (emoji)', color:'Rang', cancel:'Bekor qilish', save:'Saqlash', doneLabel:'Tayyor',
+  welcome:'Current ilovasiga xush kelibsiz', setupSubtitle:'Trekeringizni sozlaymiz — bu taxminan 10 soniya vaqt oladi.',
+  yourMainCurrency:'Asosiy valyutangiz', change:'Oʻzgartirish', getStarted:'Boshlash', chooseCurrency:'Valyutani tanlang',
+  setMonthlyLimit:'Oylik limitni belgilash', newSavingsGoal:'Yangi jamgʻarma maqsadi', goalNamePlaceholder:'masalan, Ehtiyot jamgʻarma',
+  targetAmountPlaceholder:'Maqsad summasi', create:'Yaratish', appFooter:'Current · Qurilmada saqlanadi · v1.0.0',
+  confirmDeleteTx:"Bu amalni oʻchirasizmi?", enterValidAmount:"Toʻgʻri summa kiriting", pickCategory:"Kategoriya tanlang",
+  enterValidAmountFirst:"Avval toʻgʻri summa kiriting", confirmDeleteGoal:"Bu jamgʻarma maqsadini oʻchirasizmi?",
+  fillGoalFields:"Nom va toʻgʻri maqsad summasini kiriting", confirmResetAll:"Bu qurilmadagi barcha amallar, kategoriyalar, byudjetlar va maqsadlar butunlay oʻchiriladi. Buni ortga qaytarib boʻlmaydi. Davom etasizmi?",
+  backupImported:"Zaxira nusxa muvaffaqiyatli import qilindi.", backupInvalid:"Faylni zaxira nusxa sifatida oʻqib boʻlmadi.",
+  confirmDeleteCategory:"Bu kategoriyani oʻchirasizmi? Mavjud amallarda nomi saqlanib qoladi, lekin yangilari uchun tanlab boʻlmaydi.",
+  enterCategoryName:"Kategoriya nomini kiriting", categoryNamePlaceholder:"Kategoriya nomi", uncategorized:"Kategoriyasiz",
+  cloudSync:"Bulutga sinxronlash", signInGoogle:"Google orqali kirish",
+  cloudSyncDesc:"Maʼlumotlaringizni bulutda zaxiralash va istalgan qurilmada tiklash uchun kiring.",
+  signOut:"Chiqish", syncedJustNow:"Hozirgina sinxronlandi", syncing:"Sinxronlanmoqda…", syncFailed:"Sinxronlash xatosi — keyinroq qayta urinamiz",
+  cloudDataFound:"Bulutda zaxira topildi", useCloudData:"Bulut maʼlumotlaridan foydalanish", useThisDevice:"Shu qurilma maʼlumotlarini saqlab qolish",
+  cloudDataFoundDesc:"Bu Google hisobida allaqachon saqlangan maʼlumot bor. Qaysi versiyani saqlab qolmoqchisiz?",
+  today:"Bugun", yesterday:"Kecha", selectDate:"Sanani tanlash",
+  restoreFromCloud:"⬇️ Bulutdan tiklash", pushToCloud:"⬆️ Bulutga yuborish",
+  confirmRestoreCloud:"Bu shu qurilmadagi maʼlumotlarni bulutdagi zaxira bilan almashtiradi. Davom etasizmi?",
+  confirmPushCloud:"Bu bulutdagi zaxirani shu qurilma maʼlumotlari bilan qayta yozadi. Davom etasizmi?",
+  commissionToggle:'Komissiya', commissionPercentLabel:'Komissiya %', commissionThisMonth:'Bu oy toʻlangan komissiya',
+  commissionF:'Komissiya', commissionAmount:'Komissiya summasi',
+},
+};
+
+// Default category names, translated by stable id (works even if user later edits the English name)
+const CATEGORY_I18N = {
+  food:{en:'Food', ru:'Еда', uz:'Ovqat'},
+  groceries:{en:'Groceries / Household', ru:'Продукты / Хозяйство', uz:'Oziq-ovqat / Xoʻjalik'},
+  transport:{en:'Transportation', ru:'Транспорт', uz:'Transport'},
+  gifts:{en:'Gifts & Shopping', ru:'Подарки и покупки', uz:'Sovgʻalar va xaridlar'},
+  utility:{en:'Utility / Communal', ru:'Коммунальные услуги', uz:'Kommunal xizmatlar'},
+  gym:{en:'GYM / Health', ru:'Спортзал / Здоровье', uz:'Sport zali / Sogʻliq'},
+  saving:{en:'Saving / Investment', ru:'Накопления / Инвестиции', uz:'Jamgʻarma / Investitsiya'},
+  internet:{en:'Internet / Mobile', ru:'Интернет / Связь', uz:'Internet / Aloqa'},
+  other_expense:{en:'Other', ru:'Другое', uz:'Boshqa'},
+  salary:{en:'Salary', ru:'Зарплата', uz:'Ish haqi'},
+  cards:{en:'My Cards', ru:'Мои карты', uz:'Kartalarim'},
+  borrowed:{en:'Took From', ru:'Занял у', uz:'Qarz olindi'},
+  other_income:{en:'Other', ru:'Другое', uz:'Boshqa'},
+};
+
+function t(key){
+  const lang = state.language || 'en';
+  return (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) || TRANSLATIONS.en[key] || key;
+}
+function getLocale(){
+  const lang = state.language || 'en';
+  return lang==='ru' ? 'ru-RU' : lang==='uz' ? 'uz-Latn-UZ' : 'en-US';
+}
+function categoryDisplayName(cat){
+  if(!cat) return '';
+  const lang = state.language || 'en';
+  if(lang!=='en' && CATEGORY_I18N[cat.id]) return CATEGORY_I18N[cat.id][lang] || cat.name;
+  return cat.name;
+}
+function applyStaticTranslations(){
+  document.documentElement.lang = state.language || 'en';
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    el.textContent = t(el.getAttribute('data-i18n'));
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{
+    el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph')));
+  });
+}
+
+
+/* ---------- State ---------- */
+let state = loadState();
+
+function defaultState(){
+  return {
+    onboarded:false,
+    currency:'USD',
+    theme:'system',
+    language:'en',
+    categories: JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)),
+    transactions: [],
+    budgets: [],       // {categoryId, monthlyLimit}
+    savingsGoals: [],  // {id, name, targetAmount, currentAmount, currency}
+  };
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    return Object.assign(defaultState(), parsed);
+  }catch(e){
+    console.warn('Failed to load state, starting fresh', e);
+    return defaultState();
+  }
+}
+function saveState(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if(typeof queueCloudSync === 'function') queueCloudSync();
+}
+
+/* ---------- Utils ---------- */
+function uid(){ return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,9); }
+function getCurrency(code){ return CURRENCIES.find(c=>c.code===code) || CURRENCIES[0]; }
+function formatAmount(amount, code){
+  const c = getCurrency(code);
+  const rounded = Math.round(amount*100)/100;
+  const formatted = rounded.toLocaleString(undefined, {minimumFractionDigits: rounded%1===0?0:2, maximumFractionDigits:2});
+  return code==='UZS' ? `${formatted} ${c.symbol}` : `${c.symbol}${formatted}`;
+}
+
+/* ---------- Privacy mode (hide money figures) ---------- */
+let privacyMode = false;
+const PRIVACY_EMOJI_POOL = ['🙈','🙉','🙊','🐵','🍕','🎉','🦄','🍩','🐸','🦋','🐢','🍦','🎈','🐧','🦖','🍔','🎲','🐙','🍪','🌈','🍉','🎯','🍿','🐝','🦔','🍟','🥐'];
+function maskAmount(){
+  let s = '';
+  for(let i=0;i<3;i++) s += PRIVACY_EMOJI_POOL[Math.floor(Math.random()*PRIVACY_EMOJI_POOL.length)];
+  return s;
+}
+// Use this instead of formatAmount() anywhere a money figure is shown on screen.
+// (Exports always use the real formatAmount/raw values, never masked.)
+function displayAmount(amount, code){
+  return privacyMode ? maskAmount() : formatAmount(amount, code);
+}
+let lastBalanceTap = 0;
+function handleBalanceTap(){
+  const now = Date.now();
+  if(now - lastBalanceTap < 400){ togglePrivacy(); lastBalanceTap = 0; }
+  else { lastBalanceTap = now; }
+}
+function togglePrivacy(){
+  privacyMode = !privacyMode;
+  const btn = document.getElementById('privacy-toggle-btn');
+  if(btn) btn.textContent = privacyMode ? '🙈' : '👁️';
+  renderDashboard();
+  renderTransactions();
+  renderAnalytics();
+  renderBudgets();
+}
+function formatDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString(getLocale(),{day:'2-digit', month:'short', year:'numeric'});
+}
+function isSameMonth(iso, ref){
+  ref = ref || new Date();
+  const d = new Date(iso);
+  return d.getMonth()===ref.getMonth() && d.getFullYear()===ref.getFullYear();
+}
+function getCategory(id){ return state.categories.find(c=>c.id===id); }
+function categoriesByType(type){ return state.categories.filter(c=>c.type===type); }
+
+/* ---------- Theme ---------- */
+function applyTheme(){
+  const isDark = state.theme==='system'
+    ? window.matchMedia('(prefers-color-scheme: dark)').matches
+    : state.theme==='dark';
+  document.body.setAttribute('data-theme', isDark ? 'dark' : 'light');
+}
+function setTheme(mode){
+  state.theme = mode;
+  saveState();
+  applyTheme();
+  renderThemeChips();
+}
+function renderThemeChips(){
+  document.querySelectorAll('[data-theme-choice]').forEach(el=>{
+    el.classList.toggle('active', el.dataset.themeChoice===state.theme);
+    if(el.dataset.themeChoice===state.theme){ el.style.background='var(--accent)'; el.style.color='#fff'; el.style.borderColor='transparent';}
+    else { el.style.background='transparent'; el.style.color='var(--text)'; el.style.borderColor='var(--glass-border)'; }
+  });
+}
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ if(state.theme==='system') applyTheme(); });
+
+document.querySelectorAll('[data-theme-choice]').forEach(el=>{
+  el.addEventListener('click', ()=> setTheme(el.dataset.themeChoice));
+});
+
+/* ---------- Language ---------- */
+function setLanguage(lang){
+  state.language = lang;
+  saveState();
+  applyStaticTranslations();
+  renderLanguageChips();
+  renderThemeChips(); // labels inside theme chips also need re-translating
+  // Re-render every screen so dynamically-generated text picks up the new language
+  renderDashboard();
+  renderTransactions();
+  renderAnalytics();
+  renderBudgets();
+  renderSettings();
+}
+function renderLanguageChips(){
+  document.querySelectorAll('[data-lang-choice]').forEach(el=>{
+    const active = el.dataset.langChoice===(state.language||'en');
+    if(active){ el.style.background='var(--accent)'; el.style.color='#fff'; el.style.borderColor='transparent'; }
+    else { el.style.background='transparent'; el.style.color='var(--text)'; el.style.borderColor='var(--glass-border)'; }
+  });
+}
+document.querySelectorAll('[data-lang-choice]').forEach(el=>{
+  el.addEventListener('click', ()=> setLanguage(el.dataset.langChoice));
+});
+
+/* ---------- Onboarding ---------- */
+let onboardingCurrency = 'USD';
+function renderOnboardingCurrency(){
+  const c = getCurrency(onboardingCurrency);
+  document.getElementById('ob-currency-symbol').textContent = c.symbol;
+  document.getElementById('ob-currency-code').textContent = c.code;
+  document.getElementById('ob-currency-name').textContent = c.name;
+}
+function finishOnboarding(){
+  state.currency = onboardingCurrency;
+  state.onboarded = true;
+  saveState();
+  document.getElementById('screen-onboarding').classList.remove('active');
+  document.getElementById('tabbar').style.display='flex';
+  document.getElementById('global-fab').style.display='flex';
+  switchTab('dashboard');
+}
+
+/* ---------- Tabs / Screens ---------- */
+function switchTab(tab){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+tab).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  if(tab==='dashboard') renderDashboard();
+  if(tab==='transactions') renderTransactions();
+  if(tab==='analytics') renderAnalytics();
+  if(tab==='budgets') renderBudgets();
+  if(tab==='settings') renderSettings();
+  const fab = document.getElementById('global-fab');
+  if(fab) fab.classList.toggle('hidden', tab==='settings' || tab==='analytics');
+  window.scrollTo(0,0);
+}
+
+/* ---------- Currency Picker (shared sheet) ---------- */
+let currencyPickerContext = 'settings'; // 'onboarding' | 'settings' | 'add'
+function openCurrencyPicker(context){
+  currencyPickerContext = context;
+  renderCurrencyList();
+  document.getElementById('currency-backdrop').classList.add('active');
+  document.getElementById('currency-sheet').classList.add('active');
+}
+function closeCurrencyPicker(){
+  document.getElementById('currency-backdrop').classList.remove('active');
+  document.getElementById('currency-sheet').classList.remove('active');
+}
+function renderCurrencyList(){
+  const list = document.getElementById('currency-list');
+  const selected = currencyPickerContext==='onboarding' ? onboardingCurrency
+    : currencyPickerContext==='add' ? addTxCurrency
+    : state.currency;
+  list.innerHTML = CURRENCIES.map(c=>`
+    <div class="row gap-md" style="padding:11px 6px; border-radius:12px; cursor:pointer; ${c.code===selected?'background:rgba(140,124,255,0.15);':''}" onclick="selectCurrency('${c.code}')">
+      <div style="font-size:18px; font-weight:800; width:44px; color:var(--accent);">${c.symbol}</div>
+      <div><div style="font-weight:700;">${c.code}</div><div style="font-size:12px; color:var(--text-3);">${c.name}</div></div>
+    </div>`).join('');
+}
+function selectCurrency(code){
+  if(currencyPickerContext==='onboarding'){
+    onboardingCurrency = code;
+    renderOnboardingCurrency();
+  } else if(currencyPickerContext==='add'){
+    addTxCurrency = code;
+    document.getElementById('add-currency-tag').textContent = code + ' ▾';
+  } else {
+    state.currency = code;
+    saveState();
+    renderSettings();
+  }
+  closeCurrencyPicker();
+}
+
+/* ---------- Dashboard ---------- */
+function renderDashboard(){
+  const now = new Date();
+  document.getElementById('db-month-label').textContent = now.toLocaleDateString(getLocale(),{month:'long', year:'numeric'});
+  const monthTx = state.transactions.filter(t=>isSameMonth(t.date, now));
+  let income=0, expense=0, commission=0;
+  monthTx.forEach(t=>{
+    if(t.currency !== state.currency) return;
+    if(t.type==='income') income += t.amount; else expense += t.amount;
+    if(t.commissionAmount) commission += t.commissionAmount;
+  });
+  const balance = income - expense;
+  document.getElementById('db-balance').textContent = displayAmount(balance, state.currency);
+  document.getElementById('db-balance').style.color = balance>=0 ? 'var(--income)' : 'var(--expense)';
+  document.getElementById('db-income').textContent = displayAmount(income, state.currency);
+  document.getElementById('db-expense').textContent = displayAmount(expense, state.currency);
+
+  const totalSavings = state.savingsGoals.reduce((s,g)=>s+g.currentAmount,0);
+  const savingsCard = document.getElementById('db-savings-card');
+  if(state.savingsGoals.length>0){
+    savingsCard.classList.remove('hidden');
+    document.getElementById('db-savings-total').textContent = displayAmount(totalSavings, state.currency);
+  } else savingsCard.classList.add('hidden');
+
+  const commissionCard = document.getElementById('db-commission-card');
+  if(commission>0){
+    commissionCard.classList.remove('hidden');
+    document.getElementById('db-commission-total').textContent = displayAmount(commission, state.currency);
+  } else commissionCard.classList.add('hidden');
+
+  const recent = state.transactions.slice(0,5);
+  const list = document.getElementById('db-recent-list');
+  list.innerHTML = recent.length===0
+    ? `<div class="empty-state">${t('noTransactionsYet')}</div>`
+    : recent.map(t=>txItemHTML(t, true)).join('<div class="divider"></div>');
+}
+
+/* ---------- Transactions list ---------- */
+let txFilter = 'all';
+function setTxFilter(f){
+  txFilter = f;
+  document.querySelectorAll('[data-tx-filter]').forEach(el=>{
+    const active = el.dataset.txFilter===f;
+    el.classList.toggle('active', active);
+    el.style.background = active ? 'var(--accent)' : 'var(--glass-fill)';
+    el.style.color = active ? '#fff' : 'var(--text)';
+  });
+  renderTransactions();
+}
+function txItemHTML(t, editable){
+  const cat = getCategory(t.categoryId);
+  const isIncome = t.type==='income';
+  const color = cat ? cat.color : '#8395A7';
+  return `
+  <div class="tx-item" onclick="${editable ? `openEditSheet('${t.id}')` : ''}" style="${editable?'cursor:pointer;':''}">
+    <div class="tx-icon" style="background:${color}26;">${cat?cat.icon:'💰'}</div>
+    <div class="tx-mid">
+      <div class="tx-name">${cat?categoryDisplayName(cat):t('uncategorized')}</div>
+      <div class="tx-date">${formatDate(t.date)}</div>
+      ${t.notes ? `<div class="tx-note">📝 ${escapeHtml(t.notes)}</div>` : ''}
+      ${t.commissionAmount ? `<div class="tx-note" style="color:var(--warn);">💸 ${t.commissionPercent}% — ${displayAmount(t.commissionAmount, t.currency)}</div>` : ''}
+    </div>
+    <div class="tx-amt" style="color:${isIncome?'var(--income)':'var(--expense)'}">${isIncome?'+':'−'}${displayAmount(t.amount, t.currency)}</div>
+  </div>`;
+}
+function escapeHtml(s){ return s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function renderTransactions(){
+  const list = document.getElementById('tx-list');
+  const filtered = txFilter==='all' ? state.transactions : state.transactions.filter(t=>t.type===txFilter);
+  list.innerHTML = filtered.length===0
+    ? `<div class="empty-state">${t('nothingHereYet')}</div>`
+    : filtered.map(t=>txItemHTML(t, true)).join('<div class="divider"></div>');
+}
+function deleteTx(id){
+  if(!confirm(t('confirmDeleteTx'))) return;
+  state.transactions = state.transactions.filter(t=>t.id!==id);
+  saveState();
+  closeAddSheet();
+  renderTransactions();
+  renderDashboard();
+}
+
+/* ---------- Add / Edit Transaction Sheet ---------- */
+let addTxType = 'expense';
+let addTxCurrency = 'USD';
+let addTxCategoryId = null;
+let addTxDate = new Date(); // date portion the transaction will be logged under
+let editingTxId = null; // null = adding new, otherwise editing this transaction id
+let addTxCommissionEnabled = false;
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+function toDateInputValue(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+function isSameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+function renderAddDateLabel(){
+  const now = new Date();
+  const yesterday = new Date(now); yesterday.setDate(now.getDate()-1);
+  let label;
+  if(isSameDay(addTxDate, now)) label = t('today');
+  else if(isSameDay(addTxDate, yesterday)) label = t('yesterday');
+  else label = addTxDate.toLocaleDateString(undefined, { day:'numeric', month:'short', year: addTxDate.getFullYear()!==now.getFullYear() ? 'numeric' : undefined });
+  document.getElementById('add-date-label').textContent = label;
+  const chip = document.getElementById('add-date-chip');
+  const isToday = isSameDay(addTxDate, now);
+  chip.style.color = isToday ? 'var(--text-3)' : 'var(--accent)';
+  chip.style.borderColor = isToday ? 'var(--glass-border)' : 'var(--accent)';
+}
+function openAddDatePicker(){
+  const input = document.getElementById('add-date-input');
+  input.max = toDateInputValue(new Date()); // no future dates
+  input.value = toDateInputValue(addTxDate);
+  if(input.showPicker){ try{ input.showPicker(); return; }catch(e){} }
+  input.click();
+}
+function onAddDateChange(){
+  const input = document.getElementById('add-date-input');
+  if(!input.value) return;
+  const [y,m,d] = input.value.split('-').map(Number);
+  const chosen = new Date(y, m-1, d);
+  if(chosen > new Date()) return; // safety: ignore future dates
+  addTxDate = chosen;
+  renderAddDateLabel();
+}
+
+/* ---------- Commission toggle in Add/Edit sheet ---------- */
+function toggleAddCommission(){
+  addTxCommissionEnabled = !addTxCommissionEnabled;
+  renderCommissionUI();
+}
+function renderCommissionUI(){
+  const sw = document.getElementById('add-commission-switch');
+  const card = document.getElementById('add-commission-card');
+  sw.classList.toggle('on', addTxCommissionEnabled);
+  card.classList.toggle('hidden', !addTxCommissionEnabled);
+  if(addTxCommissionEnabled) renderCommissionPreview();
+}
+function renderCommissionPreview(){
+  if(!addTxCommissionEnabled) return;
+  const amount = parseFloat(document.getElementById('add-amount').value) || 0;
+  const pct = parseFloat(document.getElementById('add-commission-percent').value) || 0;
+  const commission = amount * pct / 100;
+  document.getElementById('add-commission-preview').textContent = commission>0 ? '≈ ' + displayAmount(commission, addTxCurrency) : '';
+}
+
+function openAddSheet(){
+  editingTxId = null;
+  addTxType = 'expense';
+  addTxCurrency = state.currency;
+  addTxCategoryId = null;
+  addTxDate = new Date();
+  addTxCommissionEnabled = false;
+  document.getElementById('add-amount').value = '';
+  document.getElementById('add-notes').value = '';
+  document.getElementById('add-commission-percent').value = '';
+  document.getElementById('add-currency-tag').textContent = addTxCurrency + ' ▾';
+  document.getElementById('add-sheet-title').textContent = 'New transaction';
+  document.getElementById('add-save-btn').textContent = 'Save transaction';
+  document.getElementById('add-delete-btn').classList.add('hidden');
+  renderAddTypeChips();
+  renderAddCategoryChips();
+  renderAddDateLabel();
+  renderCommissionUI();
+  document.getElementById('add-backdrop').classList.add('active');
+  document.getElementById('add-sheet').classList.add('active');
+}
+function openEditSheet(id){
+  const t = state.transactions.find(t=>t.id===id);
+  if(!t) return;
+  editingTxId = id;
+  addTxType = t.type;
+  addTxCurrency = t.currency;
+  addTxCategoryId = t.categoryId;
+  addTxDate = new Date(t.date);
+  addTxCommissionEnabled = !!t.commissionAmount;
+  document.getElementById('add-amount').value = t.amount;
+  document.getElementById('add-notes').value = t.notes || '';
+  document.getElementById('add-commission-percent').value = t.commissionPercent || '';
+  document.getElementById('add-currency-tag').textContent = addTxCurrency + ' ▾';
+  document.getElementById('add-sheet-title').textContent = 'Edit transaction';
+  document.getElementById('add-save-btn').textContent = 'Save changes';
+  document.getElementById('add-delete-btn').classList.remove('hidden');
+  renderAddTypeChips();
+  renderAddCategoryChips();
+  renderAddDateLabel();
+  renderCommissionUI();
+  document.getElementById('add-backdrop').classList.add('active');
+  document.getElementById('add-sheet').classList.add('active');
+}
+function deleteFromEditSheet(){
+  if(!editingTxId) return;
+  deleteTx(editingTxId);
+}
+function closeAddSheet(){
+  document.getElementById('add-backdrop').classList.remove('active');
+  document.getElementById('add-sheet').classList.remove('active');
+}
+function renderAddTypeChips(){
+  document.querySelectorAll('[data-type-choice]').forEach(el=>{
+    const active = el.dataset.typeChoice===addTxType;
+    el.classList.toggle('active', active);
+    const color = addTxType==='income' ? 'var(--income)' : 'var(--expense)';
+    el.style.background = active ? color : 'var(--glass-fill)';
+    el.style.color = active ? '#fff' : 'var(--text)';
+  });
+}
+document.querySelectorAll('[data-type-choice]').forEach(el=>{
+  el.addEventListener('click', ()=>{
+    addTxType = el.dataset.typeChoice;
+    addTxCategoryId = null;
+    renderAddTypeChips();
+    renderAddCategoryChips();
+  });
+});
+function renderAddCategoryChips(){
+  const cats = categoriesByType(addTxType);
+  const row = document.getElementById('add-category-row');
+  row.innerHTML = cats.map(c=>`
+    <div class="chip ${c.id===addTxCategoryId?'active':''}" style="${c.id===addTxCategoryId?`background:${c.color};`:''}" onclick="selectAddCategory('${c.id}')">
+      <span>${c.icon}</span><span>${categoryDisplayName(c)}</span>
+    </div>`).join('');
+}
+function selectAddCategory(id){ addTxCategoryId = id; renderAddCategoryChips(); }
+function saveTransaction(){
+  const amount = parseFloat(document.getElementById('add-amount').value);
+  if(isNaN(amount) || amount<=0){ alert(t('enterValidAmount')); return; }
+  if(!addTxCategoryId){ alert(t('pickCategory')); return; }
+  const notes = document.getElementById('add-notes').value.trim();
+
+  let commissionPercent = undefined, commissionAmount = undefined;
+  if(addTxCommissionEnabled){
+    const pct = parseFloat(document.getElementById('add-commission-percent').value);
+    if(!isNaN(pct) && pct>0){
+      commissionPercent = pct;
+      commissionAmount = Math.round(amount * pct / 100 * 100) / 100;
+    }
+  }
+
+  if(editingTxId){
+    const t = state.transactions.find(t=>t.id===editingTxId);
+    if(t){
+      const original = new Date(t.date);
+      const finalDate = new Date(addTxDate);
+      finalDate.setHours(original.getHours(), original.getMinutes(), original.getSeconds(), original.getMilliseconds());
+      t.type = addTxType; t.amount = amount; t.currency = addTxCurrency;
+      t.categoryId = addTxCategoryId; t.notes = notes || undefined;
+      t.date = finalDate.toISOString();
+      t.commissionPercent = commissionPercent;
+      t.commissionAmount = commissionAmount;
+    }
+  } else {
+    const now = new Date();
+    const finalDate = new Date(addTxDate);
+    finalDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+    state.transactions.unshift({
+      id: uid(), type: addTxType, amount, currency: addTxCurrency,
+      categoryId: addTxCategoryId, date: finalDate.toISOString(), notes: notes || undefined,
+      commissionPercent, commissionAmount,
+    });
+  }
+  state.transactions.sort((a,b)=> new Date(b.date) - new Date(a.date));
+  saveState();
+  closeAddSheet();
+  renderDashboard();
+  renderTransactions();
+}
+
+/* ---------- Analytics / Monthly Report ---------- */
+let reportMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+
+function changeReportMonth(delta){
+  const now = new Date();
+  const next = new Date(reportMonth.getFullYear(), reportMonth.getMonth()+delta, 1);
+  // Don't allow navigating into the future beyond the current month
+  if(next > new Date(now.getFullYear(), now.getMonth(), 1)) return;
+  reportMonth = next;
+  renderAnalytics();
+}
+
+// Totals (income/expense/commission) for a given month, in the user's main currency
+function monthTotals(date){
+  let income=0, expense=0, commission=0;
+  state.transactions.forEach(t=>{
+    if(t.currency !== state.currency) return;
+    if(!isSameMonth(t.date, date)) return;
+    if(t.type==='income') income+=t.amount; else expense+=t.amount;
+    if(t.commissionAmount) commission += t.commissionAmount;
+  });
+  return {income, expense, commission};
+}
+
+function renderAnalytics(){
+  const now = new Date();
+  const isCurrentMonth = reportMonth.getFullYear()===now.getFullYear() && reportMonth.getMonth()===now.getMonth();
+  document.getElementById('report-month-label').textContent = reportMonth.toLocaleDateString(getLocale(),{month:'long', year:'numeric'});
+  document.getElementById('report-next-btn').style.opacity = isCurrentMonth ? '0.35' : '1';
+  document.getElementById('report-next-btn').style.pointerEvents = isCurrentMonth ? 'none' : 'auto';
+
+  const {income, expense, commission} = monthTotals(reportMonth);
+  const balance = income - expense;
+  document.getElementById('rep-balance').textContent = displayAmount(balance, state.currency);
+  document.getElementById('rep-balance').style.color = balance>=0 ? 'var(--income)' : 'var(--expense)';
+  document.getElementById('rep-income').textContent = displayAmount(income, state.currency);
+  document.getElementById('rep-expense').textContent = displayAmount(expense, state.currency);
+  document.getElementById('rep-commission').textContent = displayAmount(commission, state.currency);
+
+  renderComparisonStats(expense);
+
+  // Category breakdown for the selected month
+  const map = {};
+  state.transactions
+    .filter(t=>t.type==='expense' && t.currency===state.currency && isSameMonth(t.date, reportMonth))
+    .forEach(t=>{ map[t.categoryId] = (map[t.categoryId]||0) + t.amount; });
+  const data = Object.entries(map).map(([catId,val])=>{
+    const c = getCategory(catId);
+    return {label:c?categoryDisplayName(c):t('uncategorized'), value:val, color:c?c.color:'#8395A7', icon:c?c.icon:'🚦'};
+  }).sort((a,b)=>b.value-a.value);
+  const total = data.reduce((s,d)=>s+d.value,0);
+
+  document.getElementById('pie-empty').classList.toggle('hidden', total>0);
+  document.getElementById('pie-wrap').innerHTML = total>0 ? pieSVG(data) : '';
+  document.getElementById('pie-legend').innerHTML = data.map(d=>`
+    <div class="legend-row">
+      <div class="dot" style="background:${d.color}; margin-right:8px;"></div>
+      <div style="flex:1;">${d.icon} ${d.label}</div>
+      <div style="color:var(--text-3); margin-right:8px;">${total?((d.value/total)*100).toFixed(0):0}%</div>
+      <div style="font-weight:700;">${displayAmount(d.value, state.currency)}</div>
+    </div>`).join('');
+
+  const sameCurrency = state.transactions.filter(t=>t.currency===state.currency);
+  document.getElementById('bar-wrap').innerHTML = barSVG(get6MonthData(sameCurrency));
+}
+
+// 1) Difference vs last month  2) Average monthly difference  3) % change — all based on spending (expenses)
+function renderComparisonStats(thisMonthExpense){
+  const lastMonthDate = new Date(reportMonth.getFullYear(), reportMonth.getMonth()-1, 1);
+  const lastMonthExpense = monthTotals(lastMonthDate).expense;
+
+  const el = document.getElementById('rep-compare');
+  const hasLastMonth = state.transactions.some(t=>t.currency===state.currency && t.type==='expense' && isSameMonth(t.date, lastMonthDate));
+
+  if(!hasLastMonth){
+    el.innerHTML = `<div class="empty-state" style="padding:8px 0;">${t('notEnoughHistory')}</div>`;
+    return;
+  }
+
+  const diff = thisMonthExpense - lastMonthExpense;
+  const pct = lastMonthExpense>0 ? (diff/lastMonthExpense)*100 : null;
+  const avgDiff = averageMonthlyDifference();
+
+  el.innerHTML = `
+    ${statRow(t('differenceVsLastMonth'), diff, displayAmount(Math.abs(diff), state.currency), diff>0)}
+    ${avgDiff===null ? '' : statRow(t('averageMonthlyChange'), avgDiff, displayAmount(Math.abs(avgDiff), state.currency), avgDiff>0)}
+    ${pct===null ? '' : statRow(t('percentageChange'), pct, Math.abs(pct).toFixed(1)+'%', pct>0)}
+  `;
+}
+function statRow(label, rawValue, displayValue, isIncrease){
+  // For spending: an increase is "bad" (expense color), a decrease is "good" (income color)
+  const neutral = rawValue===0;
+  const color = neutral ? 'var(--text-2)' : (isIncrease ? 'var(--expense)' : 'var(--income)');
+  const arrow = neutral ? '→' : (isIncrease ? '↑' : '↓');
+  return `
+  <div class="row-between" style="padding:9px 0; border-bottom:1px solid var(--glass-border);">
+    <div style="font-size:13.5px; color:var(--text-2);">${label}</div>
+    <div style="font-weight:800; color:${color};">${arrow} ${displayValue}</div>
+  </div>`;
+}
+// Average of month-over-month spending changes across all months with recorded data
+function averageMonthlyDifference(){
+  const sameCurrency = state.transactions.filter(t=>t.currency===state.currency && t.type==='expense');
+  if(sameCurrency.length===0) return null;
+  const monthKeys = new Set(sameCurrency.map(t=>{
+    const d = new Date(t.date);
+    return d.getFullYear()+'-'+d.getMonth();
+  }));
+  if(monthKeys.size < 2) return null;
+  const sortedMonths = Array.from(monthKeys).map(k=>{
+    const [y,m] = k.split('-').map(Number);
+    return new Date(y,m,1);
+  }).sort((a,b)=>a-b);
+  let totalDiff = 0, count = 0;
+  for(let i=1;i<sortedMonths.length;i++){
+    const prev = monthTotals(sortedMonths[i-1]).expense;
+    const curr = monthTotals(sortedMonths[i]).expense;
+    totalDiff += (curr-prev);
+    count++;
+  }
+  return count>0 ? totalDiff/count : null;
+}
+
+/* ---------- Export monthly report ---------- */
+function reportFileBaseName(){
+  const monthName = reportMonth.toLocaleDateString(getLocale(),{month:'long', year:'numeric'}).replace(/\s+/g,'-');
+  return `Current-Report-${monthName}`;
+}
+function setExportStatus(msg, isError){
+  const el = document.getElementById('export-status');
+  el.textContent = msg;
+  el.style.color = isError ? 'var(--danger)' : 'var(--text-3)';
+}
+async function exportReportImage(){
+  if(typeof html2canvas === 'undefined'){ setExportStatus('Could not load the export tool — check your internet connection and try again.', true); return; }
+  setExportStatus('Preparing image…');
+  const wasHidden = privacyMode;
+  if(wasHidden){ privacyMode = false; renderAnalytics(); }
+  try{
+    const node = document.getElementById('report-capture');
+    const canvas = await html2canvas(node, {backgroundColor: document.body.getAttribute('data-theme')==='dark' ? '#161A2C' : '#EFEAFA', scale: 2});
+    const link = document.createElement('a');
+    link.download = reportFileBaseName() + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    setExportStatus('Image saved ✓');
+  }catch(e){
+    console.warn(e);
+    setExportStatus('Something went wrong creating the image.', true);
+  }finally{
+    if(wasHidden){ privacyMode = true; renderAnalytics(); }
+  }
+}
+async function exportReportPDF(){
+  if(typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined'){ setExportStatus('Could not load the export tool — check your internet connection and try again.', true); return; }
+  setExportStatus('Preparing PDF…');
+  const wasHidden = privacyMode;
+  if(wasHidden){ privacyMode = false; renderAnalytics(); }
+  try{
+    const node = document.getElementById('report-capture');
+    const canvas = await html2canvas(node, {backgroundColor: document.body.getAttribute('data-theme')==='dark' ? '#161A2C' : '#EFEAFA', scale: 2});
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({orientation:'portrait', unit:'pt', format:'a4'});
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = pageWidth - 60;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const y = imgHeight < pageHeight-60 ? 40 : 20;
+    pdf.setFontSize(16);
+    pdf.text(reportMonth.toLocaleDateString(getLocale(),{month:'long', year:'numeric'}) + ' — Expense Report', 30, y);
+    pdf.addImage(imgData, 'PNG', 30, y+16, imgWidth, imgHeight);
+    pdf.save(reportFileBaseName() + '.pdf');
+    setExportStatus('PDF saved ✓');
+  }catch(e){
+    console.warn(e);
+    setExportStatus('Something went wrong creating the PDF.', true);
+  }finally{
+    if(wasHidden){ privacyMode = true; renderAnalytics(); }
+  }
+}
+function exportReportExcel(){
+  if(typeof XLSX === 'undefined'){ setExportStatus('Could not load the export tool — check your internet connection and try again.', true); return; }
+  setExportStatus('Preparing spreadsheet…');
+  try{
+    const monthTx = state.transactions
+      .filter(t=>isSameMonth(t.date, reportMonth))
+      .slice()
+      .sort((a,b)=> new Date(a.date) - new Date(b.date));
+
+    const rows = monthTx.map(t=>{
+      const cat = getCategory(t.categoryId);
+      const d = new Date(t.date);
+      return {
+        Date: d.toLocaleDateString(),
+        Time: d.toLocaleTimeString(getLocale(), {hour:'2-digit', minute:'2-digit'}),
+        Type: t.type,
+        Category: cat ? cat.name : 'Uncategorized',
+        Amount: t.amount,
+        Currency: t.currency,
+        CommissionPercent: t.commissionPercent || '',
+        CommissionAmount: t.commissionAmount || '',
+        Notes: t.notes || '',
+      };
+    });
+
+    const {income, expense, commission} = monthTotals(reportMonth);
+    rows.push({}); // spacer
+    rows.push({Date:'', Time:'', Type:'', Category:'TOTAL INCOME', Amount:income, Currency:state.currency, CommissionPercent:'', CommissionAmount:'', Notes:''});
+    rows.push({Date:'', Time:'', Type:'', Category:'TOTAL EXPENSE', Amount:expense, Currency:state.currency, CommissionPercent:'', CommissionAmount:'', Notes:''});
+    rows.push({Date:'', Time:'', Type:'', Category:'TOTAL COMMISSION', Amount:commission, Currency:state.currency, CommissionPercent:'', CommissionAmount:'', Notes:''});
+    rows.push({Date:'', Time:'', Type:'', Category:'NET BALANCE', Amount:income-expense, Currency:state.currency, CommissionPercent:'', CommissionAmount:'', Notes:''});
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{wch:12},{wch:9},{wch:9},{wch:22},{wch:12},{wch:9},{wch:16},{wch:16},{wch:26}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, reportMonth.toLocaleDateString(getLocale(),{month:'short', year:'numeric'}));
+    XLSX.writeFile(wb, reportFileBaseName() + '.xlsx');
+    setExportStatus('Spreadsheet saved ✓');
+  }catch(e){
+    console.warn(e);
+    setExportStatus('Something went wrong creating the spreadsheet.', true);
+  }
+}
+
+function pieSVG(data){
+  const size=180, stroke=26, r=(size-stroke)/2, c=size/2, circumference=2*Math.PI*r;
+  const total = data.reduce((s,d)=>s+d.value,0);
+  let cumulative=0;
+  const circles = data.map(d=>{
+    const frac = d.value/total;
+    const dash = frac*circumference;
+    const offset = -cumulative*circumference;
+    cumulative += frac;
+    return `<circle cx="${c}" cy="${c}" r="${r}" stroke="${d.color}" stroke-width="${stroke}" fill="none" stroke-dasharray="${dash} ${circumference-dash}" stroke-dashoffset="${offset}" />`;
+  }).join('');
+  return `<svg width="${size}" height="${size}"><g transform="rotate(-90 ${c} ${c})">${circles}</g></svg>`;
+}
+function get6MonthData(txs){
+  const now = new Date();
+  const buckets = [];
+  for(let i=5;i>=0;i--){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    const label = d.toLocaleDateString(getLocale(),{month:'short'});
+    let income=0, expense=0;
+    txs.forEach(t=>{
+      const td = new Date(t.date);
+      if(td.getMonth()===d.getMonth() && td.getFullYear()===d.getFullYear()){
+        if(t.type==='income') income+=t.amount; else expense+=t.amount;
+      }
+    });
+    buckets.push({label, income, expense});
+  }
+  return buckets;
+}
+function barSVG(data){
+  const height=160, barWidth=10, groupWidth=barWidth*2+10;
+  const maxVal = Math.max(1, ...data.map(d=>Math.max(d.income,d.expense)));
+  const chartWidth = Math.max(data.length*(groupWidth+18), 260);
+  const incomeColor = getComputedStyle(document.body).getPropertyValue('--income').trim() || '#2ED9A3';
+  const expenseColor = getComputedStyle(document.body).getPropertyValue('--expense').trim() || '#FF7A93';
+  let bars='', labels='';
+  data.forEach((d,i)=>{
+    const x = i*(groupWidth+18)+9;
+    const incomeH = (d.income/maxVal)*(height-24);
+    const expenseH = (d.expense/maxVal)*(height-24);
+    bars += `<rect x="${x}" y="${height-24-incomeH}" width="${barWidth}" height="${incomeH}" rx="4" fill="${incomeColor}"/>`;
+    bars += `<rect x="${x+barWidth+4}" y="${height-24-expenseH}" width="${barWidth}" height="${expenseH}" rx="4" fill="${expenseColor}"/>`;
+    labels += `<text x="${x+groupWidth/2}" y="${height-6}" font-size="10" text-anchor="middle" fill="var(--text-3)">${d.label}</text>`;
+  });
+  return `<svg width="${chartWidth}" height="${height}">${bars}${labels}</svg>`;
+}
+
+/* ---------- Budgets ---------- */
+function renderBudgets(){
+  const cats = categoriesByType('expense');
+  const now = new Date();
+  const monthSpend = {};
+  state.transactions.filter(t=>t.type==='expense' && t.currency===state.currency && isSameMonth(t.date, now))
+    .forEach(t=>{ monthSpend[t.categoryId] = (monthSpend[t.categoryId]||0)+t.amount; });
+
+  const list = document.getElementById('budget-list');
+  list.innerHTML = cats.map(cat=>{
+    const budget = state.budgets.find(b=>b.categoryId===cat.id);
+    const spent = monthSpend[cat.id]||0;
+    const progress = budget ? Math.min(spent/budget.monthlyLimit,1) : 0;
+    const over = budget && spent > budget.monthlyLimit;
+    return `
+    <div style="margin-bottom:16px; cursor:pointer;" onclick="openBudgetEditor('${cat.id}')">
+      <div class="row-between" style="margin-bottom:8px;">
+        <div style="font-weight:700;">${cat.icon} ${categoryDisplayName(cat)}</div>
+        <div style="color:var(--text-3); font-size:13px;">${budget ? displayAmount(spent,state.currency)+' / '+displayAmount(budget.monthlyLimit,state.currency) : t('setLimit')}</div>
+      </div>
+      ${budget ? `<div class="progress-track"><div class="progress-fill" style="width:${progress*100}%; background:${over?'var(--danger)':cat.color};"></div></div>` : ''}
+    </div>`;
+  }).join('');
+
+  renderGoals();
+}
+let budgetEditorCategoryId = null;
+function openBudgetEditor(catId){
+  budgetEditorCategoryId = catId;
+  const budget = state.budgets.find(b=>b.categoryId===catId);
+  document.getElementById('budgetedit-amount').value = budget ? budget.monthlyLimit : '';
+  document.getElementById('budgetedit-backdrop').classList.add('active');
+}
+function closeBudgetEditor(){ document.getElementById('budgetedit-backdrop').classList.remove('active'); }
+function saveBudgetEdit(){
+  const val = parseFloat(document.getElementById('budgetedit-amount').value);
+  if(isNaN(val) || val<=0){ alert(t('enterValidAmount')); return; }
+  const existing = state.budgets.find(b=>b.categoryId===budgetEditorCategoryId);
+  if(existing) existing.monthlyLimit = val;
+  else state.budgets.push({categoryId:budgetEditorCategoryId, monthlyLimit:val});
+  saveState();
+  closeBudgetEditor();
+  renderBudgets();
+}
+
+function renderGoals(){
+  const list = document.getElementById('goals-list');
+  if(state.savingsGoals.length===0){
+    list.innerHTML = `<div class="glass card"><div class="empty-state">${t('noSavingsGoals')}</div></div>`;
+    return;
+  }
+  list.innerHTML = state.savingsGoals.map(g=>{
+    const progress = Math.min(g.currentAmount/g.targetAmount,1);
+    return `
+    <div class="glass card">
+      <div class="row-between" style="margin-bottom:8px;">
+        <div style="font-weight:800;">🎯 ${escapeHtml(g.name)}</div>
+        <span style="cursor:pointer; color:var(--text-3);" onclick="deleteGoal('${g.id}')">🗑️</span>
+      </div>
+      <div style="color:var(--text-3); margin-bottom:8px; font-size:13.5px;">${displayAmount(g.currentAmount,g.currency)} of ${displayAmount(g.targetAmount,g.currency)}</div>
+      <div class="progress-track"><div class="progress-fill" style="width:${progress*100}%; background:var(--accent-2);"></div></div>
+      <div class="row gap-sm" style="margin-top:12px;">
+        <input class="input" id="goal-amt-${g.id}" type="number" inputmode="decimal" placeholder="Amount" style="flex:1; padding:9px 12px; font-size:13.5px;">
+        <button class="btn btn-secondary btn-sm" onclick="adjustGoal('${g.id}', -1)">${t('withdraw')}</button>
+        <button class="btn btn-primary btn-sm" onclick="adjustGoal('${g.id}', 1)">${t('add')}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function adjustGoal(id, sign){
+  const g = state.savingsGoals.find(g=>g.id===id);
+  if(!g) return;
+  const input = document.getElementById('goal-amt-'+id);
+  const val = parseFloat(input.value);
+  if(isNaN(val) || val<=0){ alert(t('enterValidAmountFirst')); return; }
+  g.currentAmount = Math.max(0, g.currentAmount + sign*val);
+  input.value = '';
+  saveState();
+  renderGoals();
+  renderDashboard();
+}
+function deleteGoal(id){
+  if(!confirm(t('confirmDeleteGoal'))) return;
+  state.savingsGoals = state.savingsGoals.filter(g=>g.id!==id);
+  saveState();
+  renderGoals();
+  renderDashboard();
+}
+function openGoalModal(){
+  document.getElementById('goal-name').value='';
+  document.getElementById('goal-target').value='';
+  document.getElementById('goal-backdrop').classList.add('active');
+}
+function closeGoalModal(){ document.getElementById('goal-backdrop').classList.remove('active'); }
+function saveGoal(){
+  const name = document.getElementById('goal-name').value.trim();
+  const target = parseFloat(document.getElementById('goal-target').value);
+  if(!name || isNaN(target) || target<=0){ alert(t('fillGoalFields')); return; }
+  state.savingsGoals.push({id:uid(), name, targetAmount:target, currentAmount:0, currency:state.currency});
+  saveState();
+  closeGoalModal();
+  renderGoals();
+}
+
+/* ---------- Settings ---------- */
+function renderSettings(){
+  const c = getCurrency(state.currency);
+  document.getElementById('st-currency-symbol').textContent = c.symbol;
+  document.getElementById('st-currency-code').textContent = c.code;
+  document.getElementById('st-currency-name').textContent = c.name;
+  renderThemeChips();
+}
+function confirmReset(){
+  if(!confirm(t('confirmResetAll'))) return;
+  state = defaultState();
+  saveState();
+  applyTheme();
+  applyStaticTranslations();
+  renderLanguageChips();
+  renderThemeChips();
+  document.getElementById('tabbar').style.display='none';
+  document.getElementById('global-fab').style.display='none';
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-onboarding').classList.add('active');
+  onboardingCurrency = 'USD';
+  renderOnboardingCurrency();
+}
+function exportData(){
+  const json = JSON.stringify(state, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'current-backup.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+function importData(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const parsed = JSON.parse(reader.result);
+      state = Object.assign(defaultState(), parsed);
+      saveState();
+      applyTheme();
+      applyStaticTranslations();
+      renderLanguageChips();
+      renderThemeChips();
+      renderSettings(); renderDashboard(); renderTransactions(); renderBudgets(); renderAnalytics();
+      alert(t('backupImported'));
+    }catch(e){
+      alert(t('backupInvalid'));
+    }
+  };
+  reader.readAsText(file);
+  evt.target.value = '';
+}
+
+/* ---------- Category Manager ---------- */
+let catmgrType = 'expense';
+function openCategoryManager(){
+  catmgrType='expense';
+  renderCatmgrTypeChips();
+  renderCatmgrList();
+  document.getElementById('catmgr-backdrop').classList.add('active');
+  document.getElementById('catmgr-sheet').classList.add('active');
+}
+function closeCategoryManager(){
+  document.getElementById('catmgr-backdrop').classList.remove('active');
+  document.getElementById('catmgr-sheet').classList.remove('active');
+  renderBudgets(); renderDashboard();
+}
+document.querySelectorAll('[data-catmgr-type]').forEach(el=>{
+  el.addEventListener('click', ()=>{ catmgrType = el.dataset.catmgrType; renderCatmgrTypeChips(); renderCatmgrList(); });
+});
+function renderCatmgrTypeChips(){
+  document.querySelectorAll('[data-catmgr-type]').forEach(el=>{
+    const active = el.dataset.catmgrType===catmgrType;
+    el.style.background = active ? 'var(--accent)' : 'var(--glass-fill)';
+    el.style.color = active ? '#fff' : 'var(--text)';
+  });
+}
+function renderCatmgrList(){
+  const cats = categoriesByType(catmgrType);
+  document.getElementById('catmgr-list').innerHTML = cats.map(c=>`
+    <div class="row" style="padding:9px 0;">
+      <div class="tx-icon" style="background:${c.color}26; width:36px; height:36px; font-size:16px;">${c.icon}</div>
+      <div style="flex:1; font-weight:700;">${escapeHtml(categoryDisplayName(c))}</div>
+      <span style="margin-right:16px; cursor:pointer; color:var(--text-3);" onclick="openCategoryEditor('${c.id}')">✏️</span>
+      <span style="cursor:pointer; color:var(--danger);" onclick="deleteCategoryConfirm('${c.id}')">🗑️</span>
+    </div>`).join('');
+}
+function deleteCategoryConfirm(id){
+  if(!confirm(t('confirmDeleteCategory'))) return;
+  state.categories = state.categories.filter(c=>c.id!==id);
+  state.budgets = state.budgets.filter(b=>b.categoryId!==id);
+  saveState();
+  renderCatmgrList();
+}
+
+let categoryEditorId = null;
+let categoryEditorColor = COLOR_OPTIONS[0];
+function openCategoryEditor(id){
+  categoryEditorId = id;
+  const cat = id ? getCategory(id) : null;
+  document.getElementById('catedit-name').value = cat ? cat.name : '';
+  document.getElementById('catedit-icon').value = cat ? cat.icon : '💰';
+  categoryEditorColor = cat ? cat.color : COLOR_OPTIONS[0];
+  renderColorGrid();
+  document.getElementById('catedit-backdrop').classList.add('active');
+}
+function closeCategoryEditor(){ document.getElementById('catedit-backdrop').classList.remove('active'); }
+function renderColorGrid(){
+  document.getElementById('catedit-colors').innerHTML = COLOR_OPTIONS.map(col=>`
+    <div class="color-swatch ${col===categoryEditorColor?'selected':''}" style="background:${col};" onclick="pickEditorColor('${col}')"></div>`).join('');
+}
+function pickEditorColor(col){ categoryEditorColor = col; renderColorGrid(); }
+function saveCategory(){
+  const name = document.getElementById('catedit-name').value.trim();
+  const icon = document.getElementById('catedit-icon').value.trim() || '💰';
+  if(!name){ alert(t('enterCategoryName')); return; }
+  if(categoryEditorId){
+    const cat = getCategory(categoryEditorId);
+    cat.name = name; cat.icon = icon; cat.color = categoryEditorColor;
+  } else {
+    state.categories.push({id:uid(), name, icon, color:categoryEditorColor, type:catmgrType});
+  }
+  saveState();
+  closeCategoryEditor();
+  renderCatmgrList();
+}
+
+/* ---------- Init ---------- */
+function init(){
+  applyTheme();
+  renderThemeChips();
+  applyStaticTranslations();
+  renderLanguageChips();
+  if(state.onboarded){
+    document.getElementById('tabbar').style.display='flex';
+    document.getElementById('global-fab').style.display='flex';
+    document.getElementById('screen-dashboard').classList.add('active');
+    renderDashboard();
+  } else {
+    onboardingCurrency = state.currency || 'USD';
+    renderOnboardingCurrency();
+    document.getElementById('screen-onboarding').classList.add('active');
+    document.getElementById('tabbar').style.display='none';
+    document.getElementById('global-fab').style.display='none';
+  }
+}
+init();
+</script>
+</body>
+</html>
