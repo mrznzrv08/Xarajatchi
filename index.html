@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#14162A" />
 <meta name="description" content="A local-first expense, budget, and savings tracker with monthly reports." />
-<title>Current — Expense Tracker</title>
+<title>Xarajatchi — Xarajatlar hisobchisi</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icon-16.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Current">
+<meta name="apple-mobile-web-app-title" content="Xarajatchi">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -133,6 +133,29 @@ button, input, select, textarea{ font-family:inherit; }
 }
 .fab-top:active{ transform:scale(0.92); }
 .fab-top.hidden{ opacity:0; pointer-events:none; transform:scale(0.8); }
+
+.fab-quick{
+  position:fixed; z-index:40; right:calc(50% - 260px + 24px); bottom:184px;
+  width:50px; height:50px; border-radius:50%; border:none; cursor:pointer;
+  background:linear-gradient(135deg,var(--accent-2),#25B5B0); color:#0E0F1C; font-size:22px;
+  display:flex; align-items:center; justify-content:center; box-shadow:0 8px 20px rgba(61,224,219,0.4);
+}
+@media(max-width:560px){ .fab-quick{ right:24px; } }
+.fab-quick:active{ transform:scale(0.9); }
+.fab-quick.pulse{ animation:quickPulse .45s ease; }
+@keyframes quickPulse{ 0%{transform:scale(1);} 45%{transform:scale(1.28);} 100%{transform:scale(1);} }
+
+.toast{
+  position:fixed; top:18px; left:50%; z-index:200;
+  transform:translateX(-50%) translateY(-16px);
+  padding:12px 20px; border-radius:var(--radius-pill);
+  background:var(--glass-fill-strong); backdrop-filter:blur(22px) saturate(150%);
+  -webkit-backdrop-filter:blur(22px) saturate(150%); border:1px solid var(--glass-border);
+  color:var(--text); font-weight:700; font-size:13.5px; box-shadow:0 10px 24px var(--shadow);
+  opacity:0; pointer-events:none; transition:opacity .25s ease, transform .25s ease;
+  max-width:88%; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
 /* ============================= TAB BAR (floating rounded pill, Telegram-style) ============================= */
 .tabbar{
@@ -285,7 +308,7 @@ a{color:var(--accent);}
   <div class="screen" id="screen-onboarding">
     <div style="text-align:center; padding-top:50px;">
       <div class="stat-emoji">💧</div>
-      <h1 style="font-size:28px; font-weight:800; margin:0;" data-i18n="welcome">Welcome to Current</h1>
+      <h1 style="font-size:28px; font-weight:800; margin:0;" data-i18n="welcome">Welcome to Xarajatchi</h1>
       <p style="color:var(--text-2); margin-top:8px; padding:0 20px;" data-i18n="setupSubtitle">Let's set up your tracker — takes about 10 seconds.</p>
     </div>
 
@@ -553,13 +576,15 @@ a{color:var(--accent);}
       </div>
     </div>
 
-    <div style="text-align:center; font-size:12px; color:var(--text-3); margin-top:20px;" data-i18n="appFooter">Current · Local-first · v1.0.0</div>
+    <div style="text-align:center; font-size:12px; color:var(--text-3); margin-top:20px;" data-i18n="appFooter">Xarajatchi · Local-first · v1.0.0</div>
   </div>
 
 </div>
 
 <!-- FAB (floating top-right, Telegram-style) -->
 <button class="fab fab-top" id="global-fab" onclick="openAddSheet()">➕</button>
+<button class="fab-quick fab-top" id="quick-transport-fab" onclick="quickAddTransport()" title="🚌 1700 so'm">🚌</button>
+<div class="toast" id="toast"></div>
 
 <!-- ============================= TAB BAR ============================= -->
 <div class="tabbar" id="tabbar">
@@ -977,10 +1002,10 @@ en: {
   notesOptional:'Notes (optional)', addANote:'Add a note...', saveTransaction:'Save transaction',
   saveChanges:'Save changes', deleteTransaction:'Delete transaction', expenseLabel:'Expense', incomeLabel:'Income',
   categoriesTitle:'Categories', name:'Name', iconEmoji:'Icon (emoji)', color:'Color', cancel:'Cancel', save:'Save', doneLabel:'Done',
-  welcome:'Welcome to Current', setupSubtitle:"Let's set up your tracker — takes about 10 seconds.",
+  welcome:'Welcome to Xarajatchi', setupSubtitle:"Let's set up your tracker — takes about 10 seconds.",
   yourMainCurrency:'Your main currency', change:'Change', getStarted:'Get started', chooseCurrency:'Choose currency',
   setMonthlyLimit:'Set monthly limit', newSavingsGoal:'New savings goal', goalNamePlaceholder:'e.g. Emergency fund',
-  targetAmountPlaceholder:'Target amount', create:'Create', appFooter:'Current · Local-first · v1.0.0',
+  targetAmountPlaceholder:'Target amount', create:'Create', appFooter:'Xarajatchi · Local-first · v1.0.0',
   confirmDeleteTx:'Delete this transaction?', enterValidAmount:'Enter a valid amount', pickCategory:'Pick a category',
   enterValidAmountFirst:'Enter a valid amount first', confirmDeleteGoal:'Delete this savings goal?',
   fillGoalFields:'Fill in a name and a valid target amount', confirmResetAll:'This permanently deletes every transaction, category, budget, and goal on this device. This cannot be undone. Continue?',
@@ -1022,10 +1047,10 @@ ru: {
   notesOptional:'Заметка (необязательно)', addANote:'Добавить заметку...', saveTransaction:'Сохранить',
   saveChanges:'Сохранить изменения', deleteTransaction:'Удалить операцию', expenseLabel:'Расход', incomeLabel:'Доход',
   categoriesTitle:'Категории', name:'Название', iconEmoji:'Иконка (эмодзи)', color:'Цвет', cancel:'Отмена', save:'Сохранить', doneLabel:'Готово',
-  welcome:'Добро пожаловать в Current', setupSubtitle:'Настроим ваш трекер — это займёт около 10 секунд.',
+  welcome:'Добро пожаловать в Xarajatchi', setupSubtitle:'Настроим ваш трекер — это займёт около 10 секунд.',
   yourMainCurrency:'Ваша основная валюта', change:'Изменить', getStarted:'Начать', chooseCurrency:'Выберите валюту',
   setMonthlyLimit:'Задать месячный лимит', newSavingsGoal:'Новая накопительная цель', goalNamePlaceholder:'напр. Резервный фонд',
-  targetAmountPlaceholder:'Целевая сумма', create:'Создать', appFooter:'Current · Локальное хранение · v1.0.0',
+  targetAmountPlaceholder:'Целевая сумма', create:'Создать', appFooter:'Xarajatchi · Локальное хранение · v1.0.0',
   confirmDeleteTx:'Удалить эту операцию?', enterValidAmount:'Введите корректную сумму', pickCategory:'Выберите категорию',
   enterValidAmountFirst:'Сначала введите корректную сумму', confirmDeleteGoal:'Удалить эту накопительную цель?',
   fillGoalFields:'Укажите название и корректную целевую сумму', confirmResetAll:'Это навсегда удалит все операции, категории, бюджеты и цели на этом устройстве. Это действие нельзя отменить. Продолжить?',
@@ -1067,10 +1092,10 @@ uz: {
   notesOptional:'Izoh (ixtiyoriy)', addANote:'Izoh qoʻshish...', saveTransaction:'Saqlash',
   saveChanges:'Oʻzgarishlarni saqlash', deleteTransaction:'Amalni oʻchirish', expenseLabel:'Xarajat', incomeLabel:'Daromad',
   categoriesTitle:'Kategoriyalar', name:'Nomi', iconEmoji:'Ikonka (emoji)', color:'Rang', cancel:'Bekor qilish', save:'Saqlash', doneLabel:'Tayyor',
-  welcome:'Current ilovasiga xush kelibsiz', setupSubtitle:'Trekeringizni sozlaymiz — bu taxminan 10 soniya vaqt oladi.',
+  welcome:'Xarajatchi ilovasiga xush kelibsiz', setupSubtitle:'Trekeringizni sozlaymiz — bu taxminan 10 soniya vaqt oladi.',
   yourMainCurrency:'Asosiy valyutangiz', change:'Oʻzgartirish', getStarted:'Boshlash', chooseCurrency:'Valyutani tanlang',
   setMonthlyLimit:'Oylik limitni belgilash', newSavingsGoal:'Yangi jamgʻarma maqsadi', goalNamePlaceholder:'masalan, Ehtiyot jamgʻarma',
-  targetAmountPlaceholder:'Maqsad summasi', create:'Yaratish', appFooter:'Current · Qurilmada saqlanadi · v1.0.0',
+  targetAmountPlaceholder:'Maqsad summasi', create:'Yaratish', appFooter:'Xarajatchi · Qurilmada saqlanadi · v1.0.0',
   confirmDeleteTx:"Bu amalni oʻchirasizmi?", enterValidAmount:"Toʻgʻri summa kiriting", pickCategory:"Kategoriya tanlang",
   enterValidAmountFirst:"Avval toʻgʻri summa kiriting", confirmDeleteGoal:"Bu jamgʻarma maqsadini oʻchirasizmi?",
   fillGoalFields:"Nom va toʻgʻri maqsad summasini kiriting", confirmResetAll:"Bu qurilmadagi barcha amallar, kategoriyalar, byudjetlar va maqsadlar butunlay oʻchiriladi. Buni ortga qaytarib boʻlmaydi. Davom etasizmi?",
@@ -1281,6 +1306,7 @@ function finishOnboarding(){
   document.getElementById('screen-onboarding').classList.remove('active');
   document.getElementById('tabbar').style.display='flex';
   document.getElementById('global-fab').style.display='flex';
+  document.getElementById('quick-transport-fab').style.display='flex';
   switchTab('dashboard');
 }
 
@@ -1296,6 +1322,8 @@ function switchTab(tab){
   if(tab==='settings') renderSettings();
   const fab = document.getElementById('global-fab');
   if(fab) fab.classList.toggle('hidden', tab==='settings' || tab==='analytics');
+  const quickFab = document.getElementById('quick-transport-fab');
+  if(quickFab) quickFab.classList.toggle('hidden', tab==='settings' || tab==='analytics');
   window.scrollTo(0,0);
 }
 
@@ -1417,6 +1445,37 @@ function deleteTx(id){
   closeAddSheet();
   renderTransactions();
   renderDashboard();
+}
+
+/* ---------- Quick-add: bus/metro transport (1700 so'm) ---------- */
+function showToast(msg){
+  const el = document.getElementById('toast');
+  if(!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=> el.classList.remove('show'), 1800);
+}
+function quickAddTransport(){
+  const amount = 1700;
+  const currency = 'UZS';
+  const now = new Date();
+  state.transactions.unshift({
+    id: uid(), type:'expense', amount, currency,
+    categoryId:'transport', date: now.toISOString(), notes: undefined,
+  });
+  state.transactions.sort((a,b)=> new Date(b.date) - new Date(a.date));
+  saveState();
+  renderDashboard();
+  renderTransactions();
+
+  const btn = document.getElementById('quick-transport-fab');
+  if(btn){
+    btn.classList.remove('pulse');
+    void btn.offsetWidth; // restart animation
+    btn.classList.add('pulse');
+  }
+  showToast('🚌 −' + formatAmount(amount, currency));
 }
 
 /* ---------- Add / Edit Transaction Sheet ---------- */
@@ -1728,7 +1787,7 @@ function averageMonthlyDifference(){
 /* ---------- Export monthly report ---------- */
 function reportFileBaseName(){
   const monthName = reportMonth.toLocaleDateString(getLocale(),{month:'long', year:'numeric'}).replace(/\s+/g,'-');
-  return `Current-Report-${monthName}`;
+  return `Xarajatchi-Report-${monthName}`;
 }
 function setExportStatus(msg, isError){
   const el = document.getElementById('export-status');
@@ -1997,6 +2056,7 @@ function confirmReset(){
   renderThemeChips();
   document.getElementById('tabbar').style.display='none';
   document.getElementById('global-fab').style.display='none';
+  document.getElementById('quick-transport-fab').style.display='none';
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-onboarding').classList.add('active');
   onboardingCurrency = 'USD';
@@ -2007,7 +2067,7 @@ function exportData(){
   const blob = new Blob([json], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'current-backup.json'; a.click();
+  a.href = url; a.download = 'xarajatchi-backup.json'; a.click();
   URL.revokeObjectURL(url);
 }
 function importData(evt){
@@ -2116,6 +2176,7 @@ function init(){
   if(state.onboarded){
     document.getElementById('tabbar').style.display='flex';
     document.getElementById('global-fab').style.display='flex';
+    document.getElementById('quick-transport-fab').style.display='flex';
     document.getElementById('screen-dashboard').classList.add('active');
     renderDashboard();
   } else {
@@ -2124,6 +2185,7 @@ function init(){
     document.getElementById('screen-onboarding').classList.add('active');
     document.getElementById('tabbar').style.display='none';
     document.getElementById('global-fab').style.display='none';
+    document.getElementById('quick-transport-fab').style.display='none';
   }
 }
 init();
